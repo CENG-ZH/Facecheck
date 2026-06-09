@@ -12,6 +12,8 @@ struct SettingsPage {
   @State lateMinutes: number = 15;
   @State expandedMode: boolean = false;
   @State isClearing: boolean = false;
+  @State lateBounceY: number = 0;
+  @State thresholdBounceY: number = 0;
 
   private settingsService: SettingsService = SettingsService.getInstance();
   private privacyService: PrivacyService = new PrivacyService();
@@ -163,6 +165,7 @@ struct SettingsPage {
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
           .fontColor('#007DFF')
+          .translate({ y: this.thresholdBounceY })
       }
       .width('100%')
       Slider({
@@ -176,11 +179,19 @@ struct SettingsPage {
         .selectedColor('#007DFF')
         .margin({ top: 10 })
         .onChange((value: number) => {
-          const threshold = Math.round(value);
-          this.faceThreshold = threshold;
-          this.settingsService.setFaceThreshold(threshold).catch((error: Error) => {
-            Logger.error('保存人脸阈值失败: %{public}s', error.message);
-          });
+          this.faceThreshold = Math.round(value);
+        })
+        .onChangeEnd((value: number) => {
+          const newVal = Math.round(value);
+          if (newVal !== this.faceThreshold) {
+            this.faceThreshold = newVal;
+            this.settingsService.setFaceThreshold(newVal).catch((error: Error) => {
+              Logger.error('保存人脸阈值失败: %{public}s', error.message);
+            });
+            this.thresholdBounceY = -3;
+            animateTo({ duration: 80 }, () => { this.thresholdBounceY = 2; });
+            animateTo({ duration: 100, delay: 80 }, () => { this.thresholdBounceY = 0; });
+          }
         })
       Row() {
         Text('宽松 60%')
@@ -220,6 +231,7 @@ struct SettingsPage {
           .fontSize(16)
           .fontWeight(FontWeight.Bold)
           .fontColor('#F59E0B')
+          .translate({ y: this.lateBounceY })
       }
       .width('100%')
       Slider({
@@ -233,11 +245,19 @@ struct SettingsPage {
         .selectedColor('#F59E0B')
         .margin({ top: 10 })
         .onChange((value: number) => {
-          const minutes = Math.round(value);
-          this.lateMinutes = minutes;
-          this.settingsService.setLateMinutes(minutes).catch((error: Error) => {
-            Logger.error('保存迟到时间失败: %{public}s', error.message);
-          });
+          this.lateMinutes = Math.round(value);
+        })
+        .onChangeEnd((value: number) => {
+          const newVal = Math.round(value / 5) * 5;
+          if (newVal !== this.lateMinutes) {
+            this.lateMinutes = newVal;
+            this.settingsService.setLateMinutes(newVal).catch((error: Error) => {
+              Logger.error('保存迟到时间失败: %{public}s', error.message);
+            });
+            this.lateBounceY = -3;
+            animateTo({ duration: 80 }, () => { this.lateBounceY = 2; });
+            animateTo({ duration: 100, delay: 80 }, () => { this.lateBounceY = 0; });
+          }
         })
     }
     .width('100%')

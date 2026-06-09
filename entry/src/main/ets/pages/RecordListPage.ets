@@ -1,5 +1,6 @@
 import mediaquery from '@ohos.mediaquery';
 import { AppBottomNav } from '../components/AppBottomNav';
+import { StatusPill, StatusType } from '../components/StatusPill';
 import { AttendanceService } from '../services/AttendanceService';
 import { UserService } from '../services/UserService';
 import { AttendanceRecord, AttendanceSession, CheckInStatus } from '../models/AttendanceModel';
@@ -7,6 +8,7 @@ import { UserModel } from '../models/UserModel';
 import { DateUtils } from '../utils/DateUtils';
 import { Logger } from '../utils/Logger';
 import { ExportService } from '../services/ExportService';
+import { Shadows, Radius, Colors } from '../utils/DesignTokens';
 
 @Entry
 @Component
@@ -19,6 +21,8 @@ struct RecordListPage {
   @State dateKeyword: string = '';
   @State expandedMode: boolean = false;
   @State isExporting: boolean = false;
+  @State listOpacity: number = 0;
+  @State listTranslateY: number = 10;
 
   private attendanceService: AttendanceService = new AttendanceService();
   private userService: UserService = new UserService();
@@ -32,6 +36,13 @@ struct RecordListPage {
       this.expandedMode = result.matches;
     });
     await this.loadData();
+    // 触发列表入场动画
+    setTimeout(() => {
+      animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
+        this.listOpacity = 1;
+        this.listTranslateY = 0;
+      });
+    }, 100);
   }
 
   onPageShow(): void {
@@ -99,6 +110,12 @@ struct RecordListPage {
     ).length;
   }
 
+  private getAbsentCount(): number {
+    return this.getFilteredRecords().filter((record: AttendanceRecord) =>
+      record.status === CheckInStatus.FAILED
+    ).length;
+  }
+
   private async exportRecords(): Promise<void> {
     if (this.isExporting || this.getFilteredRecords().length === 0) {
       return;
@@ -153,11 +170,11 @@ struct RecordListPage {
       }
 
       AppBottomNav({ active: 'records' })
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(Colors.bg)
     }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#F1F3F5')
-  }
 
   @Builder
   private header() {
@@ -205,6 +222,10 @@ struct RecordListPage {
         .backgroundColor('#FFFFFF')
         .borderRadius(6)
         .margin({ left: 8 })
+        .enterKeyType(EnterKeyType.Search)
+        .onSubmit((value: string) => {
+          this.dateKeyword = value.trim();
+        })
         .onChange((value: string) => { this.dateKeyword = value; })
     }
     .width('100%')
@@ -254,6 +275,7 @@ struct RecordListPage {
       this.summaryCell('记录', this.getFilteredRecords().length, '#007DFF')
       this.summaryCell('正常', this.getNormalCount(), '#34C759')
       this.summaryCell('迟到', this.getLateCount(), '#F59E0B')
+      this.summaryCell('缺勤', this.getAbsentCount(), '#FF3B30')
     }
     .width('100%')
     .height(58)
@@ -281,7 +303,7 @@ struct RecordListPage {
   @Builder
   private recordList() {
     List() {
-      ForEach(this.getFilteredRecords(), (record: AttendanceRecord) => {
+      ForEach(this.getFilteredRecords(), (record: AttendanceRecord, index: number) => {
         ListItem() {
           Column() {
             Row() {
@@ -290,46 +312,53 @@ struct RecordListPage {
                 .height(8)
                 .fill(this.getStatusColor(record.status))
                 .margin({ right: 10 })
-              Column() {
-                Text(this.getUser(record.userId)?.name ?? '历史用户')
-                  .fontSize(15)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor('#182431')
-                Text(`${this.getUser(record.userId)?.studentNo ?? ''} · ${this.getUser(record.userId)?.className ?? ''}`)
+                Column() {
+                  Text(this.getUser(record.userId)?.name ?? '历史用户')
+                    .fontSize(15)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor('#182431')
+                  Text(`${this.getUser(record.userId)?.studentNo ?? ''} · ${this.getUser(record.userId)?.className ?? ''}`)
+                    .fontSize(11)
+                    .fontColor('#989A9C')
+                    .margin({ top: 3 })
+                }
+                .layoutWeight(1)
+                .alignItems(HorizontalAlign.Start)
+                StatusPill({
+                  status: record.status === CheckInStatus.NORMAL ? StatusType.NORMAL :
+                          record.status === CheckInStatus.LATE ? StatusType.LATE : StatusType.FAILED,
+                  text: record.status === CheckInStatus.NORMAL ? '正常' :
+                        record.status === CheckInStatus.LATE ? '迟到' : '失败'
+                })
+              }
+              Row() {
+                Text(this.getSession(record.sessionId)?.courseName ?? '历史课程')
+                  .fontSize(12)
+                  .fontColor('#007DFF')
+                  .layoutWeight(1)
+                Text(`${DateUtils.formatDate(record.checkInTime)} ${DateUtils.formatTime(record.checkInTime)}`)
                   .fontSize(11)
                   .fontColor('#989A9C')
-                  .margin({ top: 3 })
+                Text(`${(record.compareScore * 100).toFixed(0)}%`)
+                  .fontSize(12)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor('#182431')
+                  .margin({ left: 10 })
               }
-              .layoutWeight(1)
-              .alignItems(HorizontalAlign.Start)
-              Text(this.getStatusText(record.status))
-                .fontSize(11)
-                .fontColor(this.getStatusColor(record.status))
-            }
-            Row() {
-              Text(this.getSession(record.sessionId)?.courseName ?? '历史课程')
-                .fontSize(12)
-                .fontColor('#007DFF')
-                .layoutWeight(1)
-              Text(`${DateUtils.formatDate(record.checkInTime)} ${DateUtils.formatTime(record.checkInTime)}`)
-                .fontSize(11)
-                .fontColor('#989A9C')
-              Text(`${(record.compareScore * 100).toFixed(0)}%`)
-                .fontSize(12)
-                .fontWeight(FontWeight.Medium)
-                .fontColor('#182431')
-                .margin({ left: 10 })
+              .width('100%')
+              .margin({ top: 11 })
             }
             .width('100%')
-            .margin({ top: 11 })
+            .padding(14)
+            .backgroundColor('#FFFFFF')
+            .borderRadius(12)
+            .shadow({ radius: 15, color: '#1A000000', offsetY: 6 })
           }
-          .width('100%')
-          .padding(14)
-          .backgroundColor('#FFFFFF')
-          .borderRadius(8)
         }
       }, (record: AttendanceRecord) => record.id.toString())
     }
+    .opacity(this.listOpacity)
+    .translate({ y: this.listTranslateY })
     .layoutWeight(1)
     .width('100%')
     .padding({ left: 14, right: 14, bottom: 8 })
@@ -372,7 +401,12 @@ struct RecordListPage {
                 '#989A9C'
               )
               this.tableText(`${(record.compareScore * 100).toFixed(0)}%`, 1, '#007DFF')
-              this.tableText(this.getStatusText(record.status), 1, this.getStatusColor(record.status))
+              StatusPill({
+                status: record.status === CheckInStatus.NORMAL ? StatusType.NORMAL :
+                        record.status === CheckInStatus.LATE ? StatusType.LATE : StatusType.FAILED,
+                text: record.status === CheckInStatus.NORMAL ? '正常' :
+                      record.status === CheckInStatus.LATE ? '迟到' : '失败'
+              })
             }
             .width('100%')
             .constraintSize({ minHeight: 58 })
@@ -398,6 +432,10 @@ struct RecordListPage {
       .fontSize(12)
       .fontWeight(FontWeight.Medium)
       .fontColor('#989A9C')
+      .width('100%')
+      .textAlign(TextAlign.Center)
+      .height('100%')
+      .align(Alignment.Center)
   }
 
   @Builder

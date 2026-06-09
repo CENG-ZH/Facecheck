@@ -3,6 +3,7 @@ import { AppBottomNav } from '../components/AppBottomNav';
 import { OrganizationService } from '../services/OrganizationService';
 import { AdminClass, Course } from '../models/OrganizationModel';
 import { Logger } from '../utils/Logger';
+import { Shadows, Radius, Colors } from '../utils/DesignTokens';
 
 @Entry
 @Component
@@ -149,7 +150,7 @@ struct OrganizationPage {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor('#F1F3F5')
+      .backgroundColor(Colors.bg)
 
       if (this.showClassDialog) {
         this.classDialog()
@@ -276,7 +277,8 @@ struct OrganizationPage {
     .height('100%')
     .margin(this.compactMode ? 0 : { right: 8 })
     .backgroundColor('#FFFFFF')
-    .borderRadius(this.compactMode ? 0 : 8)
+    .borderRadius(12)
+    .shadow(Shadows.card)
   }
 
   @Builder
@@ -325,7 +327,8 @@ struct OrganizationPage {
     .height('100%')
     .margin(this.compactMode ? 0 : { left: 8 })
     .backgroundColor('#FFFFFF')
-    .borderRadius(this.compactMode ? 0 : 8)
+    .borderRadius(12)
+    .shadow(Shadows.card)
   }
 
   @Builder
@@ -389,7 +392,8 @@ struct OrganizationPage {
       .width(this.compactMode ? '88%' : 400)
       .padding(22)
       .backgroundColor('#FFFFFF')
-      .borderRadius(8)
+      .shadow(Shadows.card)
+      .borderRadius(Radius.card)
     }
     .width('100%')
     .height('100%')
@@ -423,7 +427,8 @@ struct OrganizationPage {
       .width(this.compactMode ? '88%' : 400)
       .padding(22)
       .backgroundColor('#FFFFFF')
-      .borderRadius(8)
+      .shadow(Shadows.card)
+      .borderRadius(Radius.card)
     }
     .width('100%')
     .height('100%')

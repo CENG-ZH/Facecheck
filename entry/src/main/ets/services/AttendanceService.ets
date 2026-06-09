@@ -168,9 +168,7 @@ export class AttendanceService {
       onStage?.(3);
       Logger.info('签到服务: 开始加载注册照片并执行人脸比对');
       const compareResult = await FaceVisionAdapter.compare(registeredPixelMap, capturedPixelMap);
-
-      // 释放注册照片 PixelMap
-      registeredPixelMap.release();
+      // registeredPixelMap 由 FaceVisionAdapter.compare() finally 释放，无需手动处理
 
       // 6. 判断比对结果
       // 优先使用官方 isSamePerson 判断，同时记录分数供后续分析
