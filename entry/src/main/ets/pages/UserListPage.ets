@@ -22,6 +22,8 @@ struct UserListPage {
   @State formName: string = '';
   @State formClassId: number = 0;
   @State formCourseIds: number[] = [];
+  @State userListOpacity: number = 0;
+  @State userListTranslateY: number = 0;
 
   private userService: UserService = new UserService();
   private organizationService: OrganizationService = new OrganizationService();
@@ -204,13 +206,13 @@ struct UserListPage {
           .justifyContent(FlexAlign.Center)
         } else {
           List() {
-            ForEach(this.users, (user: UserModel) => {
-              ListItem() {
-                AnimatedCard({ delay: 0 }) {
-                  this.userItem(user)
-                }
-              }
-            }, (user: UserModel) => `${user.id}_${user.updatedAt}`)
+      ForEach(this.users, (user: UserModel, index: number) => {
+        ListItem() {
+          AnimatedCard({ delay: index * 40 }) {
+            this.userItem(user)
+          }
+        }
+      }, (user: UserModel) => `${user.id}_${user.updatedAt}`)
           }
           .opacity(this.userListOpacity)
           .translate({ y: this.userListTranslateY })
@@ -320,7 +322,11 @@ struct UserListPage {
       if (this.compactMode) {
         Row() {
           Blank()
-          this.actionButtons(user)
+          Scroll() {
+            this.actionButtons(user)
+          }
+          .scrollable(ScrollDirection.Horizontal)
+          .scrollBar(BarState.Off)
         }
         .width('100%')
         .margin({ top: 12 })

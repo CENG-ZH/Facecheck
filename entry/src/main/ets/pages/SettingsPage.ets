@@ -179,20 +179,19 @@ struct SettingsPage {
         .selectedColor('#007DFF')
         .margin({ top: 10 })
         .onChange((value: number) => {
-          const threshold = Math.round(value);
-          this.faceThreshold = threshold;
-          this.settingsService.setFaceThreshold(threshold).catch((error: Error) => {
-            Logger.error('保存人脸阈值失败: %{public}s', error.message);
-          });
+          this.faceThreshold = Math.round(value);
         })
         .onChangeEnd((value: number) => {
-          this.faceThreshold = Math.round(value / 1) * 1;
-          this.settingsService.setFaceThreshold(this.faceThreshold).catch((error: Error) => {
-            Logger.error('保存人脸阈值失败: %{public}s', error.message);
-          });
-          this.thresholdBounceY = -3;
-          animateTo({ duration: 80 }, () => { this.thresholdBounceY = 2; });
-          animateTo({ duration: 100, delay: 80 }, () => { this.thresholdBounceY = 0; });
+          const newVal = Math.round(value);
+          if (newVal !== this.faceThreshold) {
+            this.faceThreshold = newVal;
+            this.settingsService.setFaceThreshold(newVal).catch((error: Error) => {
+              Logger.error('保存人脸阈值失败: %{public}s', error.message);
+            });
+            this.thresholdBounceY = -3;
+            animateTo({ duration: 80 }, () => { this.thresholdBounceY = 2; });
+            animateTo({ duration: 100, delay: 80 }, () => { this.thresholdBounceY = 0; });
+          }
         })
       Row() {
         Text('宽松 60%')
@@ -246,20 +245,19 @@ struct SettingsPage {
         .selectedColor('#F59E0B')
         .margin({ top: 10 })
         .onChange((value: number) => {
-          const minutes = Math.round(value);
-          this.lateMinutes = minutes;
-          this.settingsService.setLateMinutes(minutes).catch((error: Error) => {
-            Logger.error('保存迟到时间失败: %{public}s', error.message);
-          });
+          this.lateMinutes = Math.round(value);
         })
         .onChangeEnd((value: number) => {
-          this.lateMinutes = Math.round(value / 5) * 5;
-          this.settingsService.setLateMinutes(this.lateMinutes).catch((error: Error) => {
-            Logger.error('保存迟到时间失败: %{public}s', error.message);
-          });
-          this.lateBounceY = -3;
-          animateTo({ duration: 80 }, () => { this.lateBounceY = 2; });
-          animateTo({ duration: 100, delay: 80 }, () => { this.lateBounceY = 0; });
+          const newVal = Math.round(value / 5) * 5;
+          if (newVal !== this.lateMinutes) {
+            this.lateMinutes = newVal;
+            this.settingsService.setLateMinutes(newVal).catch((error: Error) => {
+              Logger.error('保存迟到时间失败: %{public}s', error.message);
+            });
+            this.lateBounceY = -3;
+            animateTo({ duration: 80 }, () => { this.lateBounceY = 2; });
+            animateTo({ duration: 100, delay: 80 }, () => { this.lateBounceY = 0; });
+          }
         })
     }
     .width('100%')

@@ -61,6 +61,7 @@ struct HomePage {
   @State buttonScale: number = 1;
   @State displayScore: number = 0;
   @State recentPanelOpacity: number = 0;
+  @State resultOpacity: number = 0;
 
   private attendanceService: AttendanceService = new AttendanceService();
   private userService: UserService = new UserService();
@@ -277,6 +278,8 @@ struct HomePage {
     this.isChecking = true;
     this.showResult = false;
     this.lastScore = 0;
+    this.displayScore = 0;
+    this.resultOpacity = 0;
     this.activeAttemptRecorded = false;
     this.currentStep = 0;
     this.stepText = '检查相机权限';
@@ -364,6 +367,10 @@ struct HomePage {
       this.showResult = true;
       // 触发分数滚动动画
       this.displayScore = 0;
+      this.resultOpacity = 0;
+      animateTo({ duration: 300, curve: Curve.EaseOut }, () => {
+        this.resultOpacity = 1;
+      });
       animateTo({ duration: 800, curve: Curve.EaseOut }, () => {
         this.displayScore = this.lastScore;
       });
@@ -388,7 +395,11 @@ struct HomePage {
     this.checkResultSuccess = false;
     this.checkResultMessage = message;
     this.showResult = true;
+    this.resultOpacity = 0;
     this.appendCheckInActivity(false, message, this.lastScore);
+    animateTo({ duration: 300, curve: Curve.EaseOut }, () => {
+      this.resultOpacity = 1;
+    });
     this.isChecking = false;
     this.stepText = '';
   }
@@ -831,7 +842,7 @@ struct HomePage {
       .backgroundColor(this.checkResultSuccess ? '#EEFAF1' : '#FFF1F0')
       .borderRadius(6)
       .margin({ top: 8 })
-      .opacity(this.showResult ? 1 : 0)
+      .opacity(this.resultOpacity)
     }
   }
 

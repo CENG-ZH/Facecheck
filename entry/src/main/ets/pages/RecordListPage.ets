@@ -222,6 +222,10 @@ struct RecordListPage {
         .backgroundColor('#FFFFFF')
         .borderRadius(6)
         .margin({ left: 8 })
+        .enterKeyType(EnterKeyType.Search)
+        .onSubmit((value: string) => {
+          this.dateKeyword = value.trim();
+        })
         .onChange((value: string) => { this.dateKeyword = value; })
     }
     .width('100%')
@@ -299,16 +303,15 @@ struct RecordListPage {
   @Builder
   private recordList() {
     List() {
-      ForEach(this.getFilteredRecords(), (record: AttendanceRecord) => {
+      ForEach(this.getFilteredRecords(), (record: AttendanceRecord, index: number) => {
         ListItem() {
-          AnimatedCard({ delay: 0 }) {
-            Column() {
-              Row() {
-                Circle()
-                  .width(8)
-                  .height(8)
-                  .fill(this.getStatusColor(record.status))
-                  .margin({ right: 10 })
+          Column() {
+            Row() {
+              Circle()
+                .width(8)
+                .height(8)
+                .fill(this.getStatusColor(record.status))
+                .margin({ right: 10 })
                 Column() {
                   Text(this.getUser(record.userId)?.name ?? '历史用户')
                     .fontSize(15)
@@ -429,6 +432,10 @@ struct RecordListPage {
       .fontSize(12)
       .fontWeight(FontWeight.Medium)
       .fontColor('#989A9C')
+      .width('100%')
+      .textAlign(TextAlign.Center)
+      .height('100%')
+      .align(Alignment.Center)
   }
 
   @Builder
