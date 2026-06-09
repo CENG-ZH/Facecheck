@@ -610,7 +610,7 @@ struct HomePage {
         value: this.stats.totalUsers > 0
           ? this.stats.checkedIn / this.stats.totalUsers
           : 0,
-        size: 90,
+        circleSize: 90,
         strokeWidth: 9,
         color: '#007DFF',
         label: '出勤率'

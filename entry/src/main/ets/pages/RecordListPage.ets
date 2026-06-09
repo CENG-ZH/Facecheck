@@ -223,8 +223,8 @@ struct RecordListPage {
         .borderRadius(6)
         .margin({ left: 8 })
         .enterKeyType(EnterKeyType.Search)
-        .onSubmit((value: string) => {
-          this.dateKeyword = value.trim();
+        .onSubmit((_enterKey: EnterKeyType) => {
+          this.dateKeyword = this.dateKeyword.trim();
         })
         .onChange((value: string) => { this.dateKeyword = value; })
     }
@@ -354,7 +354,6 @@ struct RecordListPage {
             .borderRadius(12)
             .shadow({ radius: 15, color: '#1A000000', offsetY: 6 })
           }
-        }
       }, (record: AttendanceRecord) => record.id.toString())
     }
     .opacity(this.listOpacity)

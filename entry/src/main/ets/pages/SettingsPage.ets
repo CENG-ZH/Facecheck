@@ -178,13 +178,10 @@ struct SettingsPage {
         .width('100%')
         .selectedColor('#007DFF')
         .margin({ top: 10 })
-        .onChange((value: number) => {
-          this.faceThreshold = Math.round(value);
-        })
-        .onChangeEnd((value: number) => {
+        .onChange((value: number, mode: SliderChangeMode) => {
           const newVal = Math.round(value);
-          if (newVal !== this.faceThreshold) {
-            this.faceThreshold = newVal;
+          this.faceThreshold = newVal;
+          if (mode === SliderChangeMode.End) {
             this.settingsService.setFaceThreshold(newVal).catch((error: Error) => {
               Logger.error('保存人脸阈值失败: %{public}s', error.message);
             });
@@ -244,13 +241,10 @@ struct SettingsPage {
         .width('100%')
         .selectedColor('#F59E0B')
         .margin({ top: 10 })
-        .onChange((value: number) => {
-          this.lateMinutes = Math.round(value);
-        })
-        .onChangeEnd((value: number) => {
+        .onChange((value: number, mode: SliderChangeMode) => {
           const newVal = Math.round(value / 5) * 5;
-          if (newVal !== this.lateMinutes) {
-            this.lateMinutes = newVal;
+          this.lateMinutes = newVal;
+          if (mode === SliderChangeMode.End) {
             this.settingsService.setLateMinutes(newVal).catch((error: Error) => {
               Logger.error('保存迟到时间失败: %{public}s', error.message);
             });
