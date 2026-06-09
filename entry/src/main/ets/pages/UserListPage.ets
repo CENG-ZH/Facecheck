@@ -5,6 +5,8 @@ import { OrganizationService } from '../services/OrganizationService';
 import { UserModel, UserFormData } from '../models/UserModel';
 import { AdminClass, Course } from '../models/OrganizationModel';
 import { Logger } from '../utils/Logger';
+import { AnimatedCard } from '../components/AnimatedCard';
+import { Shadows, Radius, Colors } from '../utils/DesignTokens';
 
 @Entry
 @Component
@@ -20,6 +22,8 @@ struct UserListPage {
   @State formName: string = '';
   @State formClassId: number = 0;
   @State formCourseIds: number[] = [];
+  @State userListOpacity: number = 0;
+  @State userListTranslateY: number = 0;
 
   private userService: UserService = new UserService();
   private organizationService: OrganizationService = new OrganizationService();
@@ -33,6 +37,13 @@ struct UserListPage {
     });
     await this.loadReferenceData();
     await this.loadUsers();
+    // 触发列表入场动画
+    setTimeout(() => {
+      animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
+        this.userListOpacity = 1;
+        this.userListTranslateY = 0;
+      });
+    }, 100);
   }
 
   onPageShow(): void {
@@ -195,12 +206,16 @@ struct UserListPage {
           .justifyContent(FlexAlign.Center)
         } else {
           List() {
-            ForEach(this.users, (user: UserModel) => {
-              ListItem() {
-                this.userItem(user)
-              }
-            }, (user: UserModel) => `${user.id}_${user.updatedAt}`)
+      ForEach(this.users, (user: UserModel, index: number) => {
+        ListItem() {
+          AnimatedCard({ delay: index * 40 }) {
+            this.userItem(user)
           }
+        }
+      }, (user: UserModel) => `${user.id}_${user.updatedAt}`)
+          }
+          .opacity(this.userListOpacity)
+          .translate({ y: this.userListTranslateY })
           .layoutWeight(1)
           .width('100%')
           .padding({ left: 14, right: 14, bottom: 10 })
@@ -211,7 +226,7 @@ struct UserListPage {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor('#F1F3F5')
+      .backgroundColor(Colors.bg)
 
       if (this.showFormDialog) {
         this.formDialog()
@@ -307,7 +322,11 @@ struct UserListPage {
       if (this.compactMode) {
         Row() {
           Blank()
-          this.actionButtons(user)
+          Scroll() {
+            this.actionButtons(user)
+          }
+          .scrollable(ScrollDirection.Horizontal)
+          .scrollBar(BarState.Off)
         }
         .width('100%')
         .margin({ top: 12 })
@@ -316,7 +335,8 @@ struct UserListPage {
     .width('100%')
     .padding(15)
     .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .borderRadius(12)
+    .shadow({ radius: 15, color: '#1A000000', offsetY: 6 })
   }
 
   @Builder
@@ -456,7 +476,8 @@ struct UserListPage {
       .width(this.compactMode ? '92%' : 460)
       .constraintSize({ maxHeight: '86%' })
       .backgroundColor('#FFFFFF')
-      .borderRadius(8)
+      .shadow(Shadows.card)
+      .borderRadius(Radius.card)
       .scrollBar(BarState.Auto)
     }
     .width('100%')

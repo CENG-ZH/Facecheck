@@ -27,6 +27,14 @@ export struct AppBottomNav {
         .width(21)
         .height(21)
         .fillColor(this.active === key ? '#007DFF' : '#989A9C')
+        .scale({
+          x: this.active === key ? 1.15 : 1.0,
+          y: this.active === key ? 1.15 : 1.0
+        })
+        .animation({
+          duration: 200,
+          curve: Curve.EaseOut
+        })
       Text(label)
         .fontSize(11)
         .fontColor(this.active === key ? '#007DFF' : '#989A9C')

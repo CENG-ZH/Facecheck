@@ -19,6 +19,8 @@ struct FaceEnrollPage {
   @State enrollMessage: string = '';
   @State currentStep: number = -1;
   @State stepText: string = '';
+  @State enrollResultOpacity: number = 0;
+  @State enrollResultY: number = 20;
 
   private userService: UserService = new UserService();
   private compactListener?: mediaquery.MediaQueryListener;
@@ -61,6 +63,8 @@ struct FaceEnrollPage {
     this.enrollMessage = '';
     this.currentStep = 0;
     this.stepText = '打开前置相机';
+    this.enrollResultOpacity = 0;
+    this.enrollResultY = 20;
 
     try {
       const context = this.getUIContext().getHostContext();
@@ -97,6 +101,12 @@ struct FaceEnrollPage {
       this.enrollMessage = '已检测到单人正面人脸，注册照片保存成功';
       await this.loadUser();
       this.getUIContext().getPromptAction().showToast({ message: '人脸录入成功', duration: 2000 });
+      setTimeout(() => {
+        animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
+          this.enrollResultOpacity = 1;
+          this.enrollResultY = 0;
+        });
+      }, 100);
     } catch (error) {
       this.enrollSuccess = false;
       this.enrollMessage = error instanceof Error ? error.message : '人脸录入失败';
@@ -275,6 +285,8 @@ struct FaceEnrollPage {
         .backgroundColor(this.enrollSuccess ? '#EEFAF1' : '#FFF1F0')
         .borderRadius(6)
         .margin({ top: 10 })
+        .opacity(this.enrollResultOpacity)
+        .translate({ y: this.enrollResultY })
       }
     }
     .width('100%')
