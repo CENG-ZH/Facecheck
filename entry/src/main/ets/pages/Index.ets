@@ -916,18 +916,14 @@ struct HomePage {
           .margin({ left: 6 })
       }
       .width(54)
-      Marquee({
-        start: true,
-        step: 4,
-        loop: -1,
-        fromStart: true,
-        src: this.getActivityTickerText()
-      })
+      Text(this.checkInActivities.length > 0 ? this.checkInActivities[0].userName : '暂无签到动态')
         .layoutWeight(1)
         .height(30)
         .fontSize(12)
         .fontColor(this.checkInActivities.length > 0 && !this.checkInActivities[0].success
           ? '#C62828' : '#52606D')
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .maxLines(1)
     }
     .width('100%')
     .height(38)
