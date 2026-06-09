@@ -15,8 +15,7 @@
 **/.test
 /.appanalyzer
 
-# Local HarmonyOS signing material and generated signing configuration
-/build-profile.json5
+# Local HarmonyOS signing material
 *.p12
 *.p7b
 *.cer
