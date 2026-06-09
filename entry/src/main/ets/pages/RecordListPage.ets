@@ -99,6 +99,12 @@ struct RecordListPage {
     ).length;
   }
 
+  private getAbsentCount(): number {
+    return this.getFilteredRecords().filter((record: AttendanceRecord) =>
+      record.status === CheckInStatus.FAILED
+    ).length;
+  }
+
   private async exportRecords(): Promise<void> {
     if (this.isExporting || this.getFilteredRecords().length === 0) {
       return;
@@ -254,6 +260,7 @@ struct RecordListPage {
       this.summaryCell('记录', this.getFilteredRecords().length, '#007DFF')
       this.summaryCell('正常', this.getNormalCount(), '#34C759')
       this.summaryCell('迟到', this.getLateCount(), '#F59E0B')
+      this.summaryCell('缺勤', this.getAbsentCount(), '#FF3B30')
     }
     .width('100%')
     .height(58)
