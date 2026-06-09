@@ -8,6 +8,14 @@ export struct AnimatedCard {
   @State private cardOpacity: number = 0;
   @Prop delay: number = 0;
   @BuilderParam content: () => void;
+  private timerId: number = -1;
+
+  aboutToDisappear(): void {
+    if (this.timerId !== -1) {
+      clearTimeout(this.timerId);
+      this.timerId = -1;
+    }
+  }
 
   build() {
     Column() {
@@ -17,12 +25,11 @@ export struct AnimatedCard {
     .opacity(this.cardOpacity)
     .onVisibleAreaChange([0], (isExpanding: boolean, ratio: number) => {
       if (isExpanding && this.cardTranslateY !== 0) {
-        const d: number = this.delay;
-        setTimeout(() => {
+        this.timerId = setTimeout(() => {
           animateTo({
             duration: 350,
             curve: Curve.EaseOut,
-            delay: d
+            delay: this.delay
           }, () => {
             this.cardTranslateY = 0;
             this.cardOpacity = 1;
