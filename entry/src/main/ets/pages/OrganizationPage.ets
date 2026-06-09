@@ -120,8 +120,8 @@ struct OrganizationPage {
 
         if (this.compactMode) {
           Row() {
-            this.tabButton('班级', 0, this.classes.length)
-            this.tabButton('课程', 1, this.courses.length)
+            this.tabButton('班级', 0, () => this.classes.length)
+            this.tabButton('课程', 1, () => this.courses.length)
           }
           .width('100%')
           .height(48)
@@ -210,9 +210,9 @@ struct OrganizationPage {
   }
 
   @Builder
-  private tabButton(label: string, index: number, count: number) {
+  private tabButton(label: string, index: number, count: () => number) {
     Column() {
-      Text(`${label} ${count}`)
+      Text(`${label} ${count()}`)
         .fontSize(14)
         .fontWeight(this.selectedTab === index ? FontWeight.Medium : FontWeight.Normal)
         .fontColor(this.selectedTab === index ? '#007DFF' : '#989A9C')
@@ -234,7 +234,7 @@ struct OrganizationPage {
   private classPanel() {
     Column() {
       if (!this.compactMode) {
-        this.panelTitle('行政班级', `${this.classes.length} 个有效班级`, () => {
+        this.panelTitle('行政班级', () => `${this.classes.length} 个有效班级`, () => {
           this.showClassDialog = true;
         })
       }
@@ -283,7 +283,7 @@ struct OrganizationPage {
   private coursePanel() {
     Column() {
       if (!this.compactMode) {
-        this.panelTitle('课程', `${this.courses.length} 门有效课程`, () => {
+        this.panelTitle('课程', () => `${this.courses.length} 门有效课程`, () => {
           this.showCourseDialog = true;
         })
       }
@@ -329,14 +329,14 @@ struct OrganizationPage {
   }
 
   @Builder
-  private panelTitle(title: string, subtitle: string, action: () => void) {
+  private panelTitle(title: string, subtitle: () => string, action: () => void) {
     Row() {
       Column() {
         Text(title)
           .fontSize(17)
           .fontWeight(FontWeight.Bold)
           .fontColor('#182431')
-        Text(subtitle)
+        Text(subtitle())
           .fontSize(12)
           .fontColor('#989A9C')
           .margin({ top: 3 })
