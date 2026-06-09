@@ -89,28 +89,6 @@ export class LivenessAdapter {
     }
   }
 
-  private static clonePixelMap(pixelMap: image.PixelMap | undefined): image.PixelMap | undefined {
-    if (!pixelMap) {
-      Logger.warn('活体检测通过，但未返回可用图像');
-      return undefined;
-    }
-
-    try {
-      const sourceInfo = pixelMap.getImageInfoSync();
-      const clonedPixelMap = pixelMap.cloneSync();
-      Logger.info('活体图像复制成功: %{public}s x %{public}s, format=%{public}s',
-        sourceInfo.size.width.toString(),
-        sourceInfo.size.height.toString(),
-        sourceInfo.pixelFormat.toString());
-      return clonedPixelMap;
-    } catch (error) {
-      const businessError = error as BusinessError;
-      Logger.error('复制活体图像失败, code: %{public}s, msg: %{public}s',
-        businessError.code?.toString() ?? 'unknown', businessError.message ?? 'unknown');
-      return undefined;
-    }
-  }
-
   private static getErrorMessage(code: number | undefined): string {
     if (code === 1008302000) {
       return '活体检测初始化失败';
@@ -177,7 +155,7 @@ export class LivenessAdapter {
 
   /**
    * 页面从活体检测控件返回后获取结果。
-   * 官方接口调用后会释放结果资源，因此必须在这里立即复制 PixelMap。
+   * 直接返回官方 mPixelMap，调用方在 finally 中负责释放。
    */
   static async getLivenessResult(context: Context): Promise<LivenessResult> {
     try {
@@ -208,7 +186,7 @@ export class LivenessAdapter {
       return {
         passed: true,
         message: '活体检测通过',
-        pixelMap: LivenessAdapter.clonePixelMap(result.mPixelMap)
+        pixelMap: result.mPixelMap  // 直接返回原始 PixelMap，由调用方在 finally 中释放
       };
     } catch (error) {
       const businessError = error as BusinessError;
