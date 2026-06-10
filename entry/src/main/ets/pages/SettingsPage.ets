@@ -179,9 +179,6 @@ struct SettingsPage {
         .selectedColor('#007DFF')
         .margin({ top: 10 })
         .onChange((value: number) => {
-          this.faceThreshold = Math.round(value);
-        })
-        .onChangeEnd((value: number) => {
           const newVal = Math.round(value);
           if (newVal !== this.faceThreshold) {
             this.faceThreshold = newVal;
@@ -245,9 +242,6 @@ struct SettingsPage {
         .selectedColor('#F59E0B')
         .margin({ top: 10 })
         .onChange((value: number) => {
-          this.lateMinutes = Math.round(value);
-        })
-        .onChangeEnd((value: number) => {
           const newVal = Math.round(value / 5) * 5;
           if (newVal !== this.lateMinutes) {
             this.lateMinutes = newVal;

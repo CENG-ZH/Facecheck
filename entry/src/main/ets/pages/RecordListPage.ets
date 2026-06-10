@@ -170,10 +170,6 @@ struct RecordListPage {
       }
 
       AppBottomNav({ active: 'records' })
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(Colors.bg)
     }
 
   @Builder
@@ -223,8 +219,8 @@ struct RecordListPage {
         .borderRadius(6)
         .margin({ left: 8 })
         .enterKeyType(EnterKeyType.Search)
-        .onSubmit((value: string) => {
-          this.dateKeyword = value.trim();
+        .onSubmit((_enterKey: EnterKeyType) => {
+          this.dateKeyword = this.dateKeyword.trim();
         })
         .onChange((value: string) => { this.dateKeyword = value; })
     }
