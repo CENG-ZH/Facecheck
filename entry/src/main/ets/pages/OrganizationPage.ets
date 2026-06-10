@@ -5,6 +5,7 @@ import { AdminClass, Course } from '../models/OrganizationModel';
 import { Logger } from '../utils/Logger';
 import { Shadows, Radius, Colors } from '../utils/DesignTokens';
 import { AnimatedCard } from '../components/AnimatedCard';
+import { FaceEnrollButton } from '../components/FaceEnrollButton';
 
 @Entry
 @Component
@@ -84,7 +85,7 @@ struct OrganizationPage {
       primaryButton: { value: '取消', action: () => {} },
       secondaryButton: {
         value: '归档',
-        fontColor: '#FF3B30',
+        fontColor: Colors.danger,
         action: () => {
           this.organizationService.archiveClass(item.id).then(() => {
             this.loadData();
@@ -99,11 +100,11 @@ struct OrganizationPage {
   private confirmArchiveCourse(item: Course): void {
     this.getUIContext().showAlertDialog({
       title: '归档课程',
-      message: `归档“${item.name}”后不能再发起新签到，历史场次与报表会保留。`,
+      message: `归档”${item.name}”后不能再发起新签到，历史场次与报表会保留。`,
       primaryButton: { value: '取消', action: () => {} },
       secondaryButton: {
         value: '归档',
-        fontColor: '#FF3B30',
+        fontColor: Colors.danger,
         action: () => {
           this.organizationService.archiveCourse(item.id).then(() => {
             this.loadData();
@@ -128,8 +129,8 @@ struct OrganizationPage {
           .width('100%')
           .height(48)
           .padding({ left: 16, right: 16 })
-          .backgroundColor('#FFFFFF')
-          .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+          .backgroundColor(Colors.card)
+          .border({ width: { bottom: 0.5 }, color: Colors.border })
 
           if (this.selectedTab === 0) {
             this.classPanel()
@@ -139,7 +140,7 @@ struct OrganizationPage {
         } else {
           Row() {
             this.classPanel()
-            Divider().vertical(true).height('100%').color('#E5E5E5')
+            Divider().vertical(true).height('100%').color(Colors.border)
             this.coursePanel()
           }
           .layoutWeight(1)
@@ -171,44 +172,46 @@ struct OrganizationPage {
         Text('教学组织')
           .fontSize(21)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
         Text('班级归属、课程与选课关系')
           .fontSize(12)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 2 })
       }
       .alignItems(HorizontalAlign.Start)
       Blank()
-      Button() {
-        Row() {
-          Image($r('app.media.icon_add'))
-            .width(17)
-            .height(17)
-            .fillColor('#FFFFFF')
-          Text(this.compactMode && this.selectedTab === 1 ? '课程' : '班级')
-            .fontSize(14)
-            .fontColor('#FFFFFF')
-            .margin({ left: 5 })
+      FaceEnrollButton() {
+        Button() {
+          Row() {
+            Image($r('app.media.icon_add'))
+              .width(17)
+              .height(17)
+              .fillColor(Colors.white)
+            Text(this.compactMode && this.selectedTab === 1 ? '课程' : '班级')
+              .fontSize(14)
+              .fontColor(Colors.white)
+              .margin({ left: 5 })
+          }
         }
+        .height(38)
+        .padding({ left: 13, right: 13 })
+        .type(ButtonType.Normal)
+        .borderRadius(6)
+        .backgroundColor(Colors.primary)
+        .onClick(() => {
+          if (this.compactMode && this.selectedTab === 1) {
+            this.showCourseDialog = true;
+          } else {
+            this.showClassDialog = true;
+          }
+        })
       }
-      .height(38)
-      .padding({ left: 13, right: 13 })
-      .type(ButtonType.Normal)
-      .borderRadius(6)
-      .backgroundColor('#007DFF')
-      .onClick(() => {
-        if (this.compactMode && this.selectedTab === 1) {
-          this.showCourseDialog = true;
-        } else {
-          this.showClassDialog = true;
-        }
-      })
     }
     .width('100%')
     .height(64)
     .padding({ left: 18, right: 18 })
-    .backgroundColor('#FFFFFF')
-    .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+    .backgroundColor(Colors.card)
+    .border({ width: { bottom: 0.5 }, color: Colors.border })
   }
 
   @Builder
@@ -217,11 +220,11 @@ struct OrganizationPage {
       Text(`${label} ${count()}`)
         .fontSize(14)
         .fontWeight(this.selectedTab === index ? FontWeight.Medium : FontWeight.Normal)
-        .fontColor(this.selectedTab === index ? '#007DFF' : '#989A9C')
+        .fontColor(this.selectedTab === index ? Colors.primary : Colors.textTertiary)
       Divider()
         .width(44)
         .strokeWidth(2)
-        .color(this.selectedTab === index ? '#007DFF' : 'rgba(0,0,0,0)')
+        .color(this.selectedTab === index ? Colors.primary : 'rgba(0,0,0,0)')
         .margin({ top: 9 })
     }
     .layoutWeight(1)
@@ -249,10 +252,10 @@ struct OrganizationPage {
                 Text(item.name)
                   .fontSize(15)
                   .fontWeight(FontWeight.Medium)
-                  .fontColor('#182431')
+                  .fontColor(Colors.textPrimary)
                 Text([item.grade, item.major].filter((value: string) => value !== '').join(' · ') || '未填写年级与专业')
                   .fontSize(12)
-                  .fontColor('#989A9C')
+                  .fontColor(Colors.textTertiary)
                   .margin({ top: 4 })
               }
               .alignItems(HorizontalAlign.Start)
@@ -260,8 +263,8 @@ struct OrganizationPage {
               Button('归档')
                 .height(32)
                 .fontSize(12)
-                .fontColor('#FF3B30')
-                .backgroundColor('#FFF1F0')
+                .fontColor(Colors.danger)
+                .backgroundColor(Colors.dangerBg)
                 .borderRadius(6)
                 .onClick(() => this.confirmArchiveClass(item))
             }
@@ -274,12 +277,12 @@ struct OrganizationPage {
       }
       .layoutWeight(1)
       .width('100%')
-      .divider({ strokeWidth: 0.5, color: '#E5E5E5', startMargin: 15, endMargin: 15 })
+      .divider({ strokeWidth: 0.5, color: Colors.border, startMargin: 15, endMargin: 15 })
     }
     .layoutWeight(1)
     .height('100%')
     .margin(this.compactMode ? 0 : { right: 8 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(Colors.card)
     .borderRadius(12)
     .shadow(Shadows.card)
   }
@@ -301,10 +304,10 @@ struct OrganizationPage {
                 Text(item.name)
                   .fontSize(15)
                   .fontWeight(FontWeight.Medium)
-                  .fontColor('#182431')
+                  .fontColor(Colors.textPrimary)
                 Text(item.code)
                   .fontSize(12)
-                  .fontColor('#007DFF')
+                  .fontColor(Colors.primary)
                   .margin({ top: 4 })
               }
               .alignItems(HorizontalAlign.Start)
@@ -312,8 +315,8 @@ struct OrganizationPage {
               Button('归档')
                 .height(32)
                 .fontSize(12)
-                .fontColor('#FF3B30')
-                .backgroundColor('#FFF1F0')
+                .fontColor(Colors.danger)
+                .backgroundColor(Colors.dangerBg)
                 .borderRadius(6)
                 .onClick(() => this.confirmArchiveCourse(item))
             }
@@ -326,12 +329,12 @@ struct OrganizationPage {
       }
       .layoutWeight(1)
       .width('100%')
-      .divider({ strokeWidth: 0.5, color: '#E5E5E5', startMargin: 15, endMargin: 15 })
+      .divider({ strokeWidth: 0.5, color: Colors.border, startMargin: 15, endMargin: 15 })
     }
     .layoutWeight(1)
     .height('100%')
     .margin(this.compactMode ? 0 : { left: 8 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(Colors.card)
     .borderRadius(12)
     .shadow(Shadows.card)
   }
@@ -343,25 +346,27 @@ struct OrganizationPage {
         Text(title)
           .fontSize(17)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
         Text(subtitle())
           .fontSize(12)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 3 })
       }
       .alignItems(HorizontalAlign.Start)
       Blank()
-      Button('新增')
-        .height(34)
-        .fontSize(13)
-        .fontColor('#007DFF')
-        .backgroundColor('#EAF4FF')
-        .borderRadius(6)
-        .onClick(action)
+      FaceEnrollButton() {
+        Button('新增')
+          .height(34)
+          .fontSize(13)
+          .fontColor(Colors.primary)
+          .backgroundColor(Colors.primaryBg)
+          .borderRadius(6)
+          .onClick(action)
+      }
     }
     .width('100%')
     .padding(15)
-    .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+    .border({ width: { bottom: 0.5 }, color: Colors.border })
   }
 
   @Builder
@@ -376,7 +381,7 @@ struct OrganizationPage {
         Text('新增班级')
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
           .margin({ bottom: 18 })
         TextInput({ placeholder: '班级名称', text: this.className })
           .width('100%')
@@ -396,7 +401,7 @@ struct OrganizationPage {
       }
       .width(this.compactMode ? '88%' : 400)
       .padding(22)
-      .backgroundColor('#FFFFFF')
+      .backgroundColor(Colors.card)
       .shadow(Shadows.card)
       .borderRadius(Radius.card)
     }
@@ -416,7 +421,7 @@ struct OrganizationPage {
         Text('新增课程')
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
           .margin({ bottom: 18 })
         TextInput({ placeholder: '课程编号，例如 HM101', text: this.courseCode })
           .width('100%')
@@ -431,7 +436,7 @@ struct OrganizationPage {
       }
       .width(this.compactMode ? '88%' : 400)
       .padding(22)
-      .backgroundColor('#FFFFFF')
+      .backgroundColor(Colors.card)
       .shadow(Shadows.card)
       .borderRadius(Radius.card)
     }
@@ -442,21 +447,31 @@ struct OrganizationPage {
   @Builder
   private dialogActions(cancel: () => void, confirm: () => void) {
     Row() {
-      Button('取消')
-        .layoutWeight(1)
-        .height(42)
-        .fontColor('#182431')
-        .backgroundColor('#F1F3F5')
-        .borderRadius(6)
-        .margin({ right: 6 })
-        .onClick(cancel)
-      Button('创建')
-        .layoutWeight(1)
-        .height(42)
-        .backgroundColor('#007DFF')
-        .borderRadius(6)
-        .margin({ left: 6 })
-        .onClick(confirm)
+      Column() {
+        FaceEnrollButton() {
+          Button('取消')
+            .width('100%')
+            .height(42)
+            .fontColor(Colors.textPrimary)
+            .backgroundColor(Colors.inputBg)
+            .borderRadius(6)
+            .onClick(cancel)
+        }
+      }
+      .layoutWeight(1)
+      .margin({ right: 6 })
+      Column() {
+        FaceEnrollButton() {
+          Button('创建')
+            .width('100%')
+            .height(42)
+            .backgroundColor(Colors.primary)
+            .borderRadius(6)
+            .onClick(confirm)
+        }
+      }
+      .layoutWeight(1)
+      .margin({ left: 6 })
     }
     .width('100%')
   }

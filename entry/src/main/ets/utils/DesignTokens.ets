@@ -20,14 +20,24 @@ export class Colors {
   static readonly textSecondary: string = '#4E5969';   // 次要文字
   static readonly textTertiary: string = '#86909C';   // 辅助/占位文字
 
+  // 通用
+  static readonly white: string = '#FFFFFF';            // 白色（文字/图标/背景）
+
   // 边框/分割
   static readonly border: string = '#E5E6EB';
   static readonly borderLight: string = '#F2F3F5';
 
+  // 品牌扩展
+  static readonly primaryBg: string = '#EAF4FF';       // 主色浅背景（选中态）
+  static readonly primaryLight: string = '#E6F7FF';    // 品牌超浅底
+  static readonly disabled: string = '#B8C1CC';        // 禁用态
+
   // 状态背景（浅色）
   static readonly successBg: string = '#E6FFF2';      // 成功状态浅背景
+  static readonly successBgAlt: string = '#F1F7F3';   // 成功状态极浅背景
   static readonly warningBg: string = '#FFF7E6';      // 迟到状态浅背景
   static readonly dangerBg: string = '#FFF1F0';       // 失败状态浅背景
+  static readonly dangerDark: string = '#C62828';     // 深红错误文字
 }
 
 export class Shadows {

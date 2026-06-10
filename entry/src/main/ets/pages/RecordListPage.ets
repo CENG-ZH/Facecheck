@@ -10,6 +10,7 @@ import { Logger } from '../utils/Logger';
 import { AttendanceAbsentRow, ExportService } from '../services/ExportService';
 import { Shadows, Radius, Colors } from '../utils/DesignTokens';
 import { AnimatedCard } from '../components/AnimatedCard';
+import { FaceEnrollButton } from '../components/FaceEnrollButton';
 
 interface SessionMemberSnapshot {
   sessionId: number;
@@ -100,9 +101,9 @@ struct RecordListPage {
   }
 
   private getStatusColor(status: CheckInStatus): string {
-    if (status === CheckInStatus.NORMAL) return '#34C759';
-    if (status === CheckInStatus.LATE) return '#F59E0B';
-    return '#FF3B30';
+    if (status === CheckInStatus.NORMAL) return Colors.success;
+    if (status === CheckInStatus.LATE) return Colors.warning;
+    return Colors.danger;
   }
 
   private getFilteredRecords(): AttendanceRecord[] {
@@ -235,7 +236,7 @@ struct RecordListPage {
         Column() {
           Text('暂无符合条件的考勤记录')
             .fontSize(15)
-            .fontColor('#989A9C')
+            .fontColor(Colors.textTertiary)
         }
         .layoutWeight(1)
         .width('100%')
@@ -295,28 +296,30 @@ struct RecordListPage {
         Text('考勤记录')
           .fontSize(21)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
         Text('按场次查看签到结果与人脸匹配度')
           .fontSize(12)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 2 })
       }
       .alignItems(HorizontalAlign.Start)
       Blank()
-      Button(this.isExporting ? '导出中' : '导出 CSV')
-        .height(36)
-        .fontSize(12)
-        .fontColor('#007DFF')
-        .backgroundColor('#EAF4FF')
-        .borderRadius(6)
-        .enabled(!this.isExporting && this.getReportRowCount() > 0)
-        .onClick(() => this.exportRecords())
+      FaceEnrollButton({ animationEnabled: !this.isExporting && this.getReportRowCount() > 0 }) {
+        Button(this.isExporting ? '导出中' : '导出 CSV')
+          .height(36)
+          .fontSize(12)
+          .fontColor(Colors.primary)
+          .backgroundColor(Colors.primaryBg)
+          .borderRadius(6)
+          .enabled(!this.isExporting && this.getReportRowCount() > 0)
+          .onClick(() => this.exportRecords())
+      }
     }
     .width('100%')
     .height(64)
     .padding({ left: 18, right: 18 })
-    .backgroundColor('#FFFFFF')
-    .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+    .backgroundColor(Colors.card)
+    .border({ width: { bottom: 0.5 }, color: Colors.border })
   }
 
   @Builder
@@ -325,13 +328,13 @@ struct RecordListPage {
       TextInput({ placeholder: '搜索姓名或学号', text: this.searchKeyword })
         .layoutWeight(1)
         .height(38)
-        .backgroundColor('#FFFFFF')
+        .backgroundColor(Colors.card)
         .borderRadius(6)
         .onChange((value: string) => { this.searchKeyword = value; })
       TextInput({ placeholder: '日期 YYYY-MM-DD', text: this.dateKeyword })
         .width(this.expandedMode ? 190 : '42%')
         .height(38)
-        .backgroundColor('#FFFFFF')
+        .backgroundColor(Colors.card)
         .borderRadius(6)
         .margin({ left: 8 })
         .enterKeyType(EnterKeyType.Search)
@@ -350,9 +353,9 @@ struct RecordListPage {
       Row() {
         Text('全部场次')
           .fontSize(12)
-          .fontColor(this.selectedSessionId <= 0 ? '#FFFFFF' : '#182431')
+          .fontColor(this.selectedSessionId <= 0 ? Colors.card : Colors.textPrimary)
           .padding({ left: 12, right: 12, top: 7, bottom: 7 })
-          .backgroundColor(this.selectedSessionId <= 0 ? '#007DFF' : '#FFFFFF')
+          .backgroundColor(this.selectedSessionId <= 0 ? Colors.primary : Colors.card)
           .borderRadius(6)
           .margin({ right: 7 })
           .onClick(() => {
@@ -362,9 +365,9 @@ struct RecordListPage {
         ForEach(this.sessions, (session: AttendanceSession) => {
           Text(`${session.courseName} · ${DateUtils.formatDate(session.startTime)}`)
             .fontSize(12)
-            .fontColor(this.selectedSessionId === session.id ? '#FFFFFF' : '#182431')
+            .fontColor(this.selectedSessionId === session.id ? Colors.card : Colors.textPrimary)
             .padding({ left: 12, right: 12, top: 7, bottom: 7 })
-            .backgroundColor(this.selectedSessionId === session.id ? '#007DFF' : '#FFFFFF')
+            .backgroundColor(this.selectedSessionId === session.id ? Colors.primary : Colors.card)
             .borderRadius(6)
             .margin({ right: 7 })
             .maxLines(1)
@@ -384,15 +387,15 @@ struct RecordListPage {
   @Builder
   private summaryBar() {
     Row() {
-      this.summaryCell('记录', () => this.getFilteredRecords().length, '#007DFF')
-      this.summaryCell('正常', () => this.getNormalCount(), '#34C759')
-      this.summaryCell('迟到', () => this.getLateCount(), '#F59E0B')
-      this.summaryCell('缺勤', () => this.getAbsentCount(), '#FF3B30')
+      this.summaryCell('记录', () => this.getFilteredRecords().length, Colors.primary)
+      this.summaryCell('正常', () => this.getNormalCount(), Colors.success)
+      this.summaryCell('迟到', () => this.getLateCount(), Colors.warning)
+      this.summaryCell('缺勤', () => this.getAbsentCount(), Colors.danger)
     }
     .width('100%')
     .height(58)
     .margin({ left: 14, right: 14, bottom: 9 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(Colors.card)
     .borderRadius(8)
   }
 
@@ -405,7 +408,7 @@ struct RecordListPage {
         .fontColor(color)
       Text(label)
         .fontSize(11)
-        .fontColor('#989A9C')
+        .fontColor(Colors.textTertiary)
         .margin({ left: 5 })
     }
     .layoutWeight(1)
@@ -429,10 +432,10 @@ struct RecordListPage {
                   Text(this.getRecordUser(record)?.name ?? '历史用户')
                     .fontSize(15)
                     .fontWeight(FontWeight.Medium)
-                    .fontColor('#182431')
+                    .fontColor(Colors.textPrimary)
                   Text(`${this.getRecordUser(record)?.studentNo ?? ''} · ${this.getRecordUser(record)?.className ?? ''}`)
                     .fontSize(11)
-                    .fontColor('#989A9C')
+                    .fontColor(Colors.textTertiary)
                     .margin({ top: 3 })
                 }
                 .layoutWeight(1)
@@ -447,15 +450,15 @@ struct RecordListPage {
               Row() {
                 Text(this.getSession(record.sessionId)?.courseName ?? '历史课程')
                   .fontSize(12)
-                  .fontColor('#007DFF')
+                  .fontColor(Colors.primary)
                   .layoutWeight(1)
                 Text(`${DateUtils.formatDate(record.checkInTime)} ${DateUtils.formatTime(record.checkInTime)}`)
                   .fontSize(11)
-                  .fontColor('#989A9C')
+                  .fontColor(Colors.textTertiary)
                 Text(`${(record.compareScore * 100).toFixed(0)}%`)
                   .fontSize(12)
                   .fontWeight(FontWeight.Medium)
-                  .fontColor('#182431')
+                  .fontColor(Colors.textPrimary)
                   .margin({ left: 10 })
               }
               .width('100%')
@@ -475,7 +478,7 @@ struct RecordListPage {
     .layoutWeight(1)
     .width('100%')
     .padding({ left: 14, right: 14, bottom: 8 })
-    .divider({ strokeWidth: 8, color: '#F1F3F5' })
+    .divider({ strokeWidth: 8, color: Colors.borderLight })
   }
 
   @Builder
@@ -492,7 +495,7 @@ struct RecordListPage {
       .width('100%')
       .height(42)
       .padding({ left: 14, right: 14 })
-      .backgroundColor('#F7F8FA')
+      .backgroundColor(Colors.bg)
       List() {
         ForEach(this.getFilteredRecords(), (record: AttendanceRecord, index: number) => {
           ListItem() {
@@ -501,20 +504,20 @@ struct RecordListPage {
               this.tableText(
                 `${this.getRecordUser(record)?.name ?? '历史用户'}\n${this.getRecordUser(record)?.studentNo ?? ''}`,
                 2,
-                '#182431'
+                Colors.textPrimary
               )
-              this.tableText(this.getRecordUser(record)?.className ?? '', 2, '#182431')
+              this.tableText(this.getRecordUser(record)?.className ?? '', 2, Colors.textPrimary)
               this.tableText(
                 `${this.getSession(record.sessionId)?.courseName ?? '历史课程'}\n${this.getSession(record.sessionId)?.title ?? ''}`,
                 3,
-                '#182431'
+                Colors.textPrimary
               )
               this.tableText(
                 `${DateUtils.formatDate(record.checkInTime)}\n${DateUtils.formatTime(record.checkInTime)}`,
                 2,
-                '#989A9C'
+                Colors.textTertiary
               )
-              this.tableText(`${(record.compareScore * 100).toFixed(0)}%`, 1, '#007DFF')
+              this.tableText(`${(record.compareScore * 100).toFixed(0)}%`, 1, Colors.primary)
               StatusPill({
                 status: record.status === CheckInStatus.NORMAL ? StatusType.NORMAL :
                         record.status === CheckInStatus.LATE ? StatusType.LATE : StatusType.FAILED,
@@ -532,7 +535,7 @@ struct RecordListPage {
       }
       .layoutWeight(1)
       .width('100%')
-      .divider({ strokeWidth: 0.5, color: '#E5E5E5' })
+      .divider({ strokeWidth: 0.5, color: Colors.border })
     }
     .layoutWeight(1)
     .width('100%')
@@ -546,7 +549,7 @@ struct RecordListPage {
       .layoutWeight(weight)
       .fontSize(12)
       .fontWeight(FontWeight.Medium)
-      .fontColor('#989A9C')
+      .fontColor(Colors.textTertiary)
       .width('100%')
       .textAlign(TextAlign.Center)
       .height('100%')

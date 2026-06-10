@@ -6,6 +6,7 @@ import { FaceVisionAdapter } from '../kits/FaceVisionAdapter';
 import { CameraAdapter } from '../kits/CameraAdapter';
 import { Logger } from '../utils/Logger';
 import { Colors, Radius, Shadows } from '../utils/DesignTokens';
+import { FaceEnrollButton } from '../components/FaceEnrollButton';
 
 @Entry
 @Component
@@ -22,7 +23,6 @@ struct FaceEnrollPage {
   @State stepText: string = '';
   @State enrollResultOpacity: number = 0;
   @State enrollResultY: number = 20;
-  @State actionButtonScale: number = 1;
 
   private userService: UserService = new UserService();
   private compactListener?: mediaquery.MediaQueryListener;
@@ -114,6 +114,15 @@ struct FaceEnrollPage {
       this.enrollMessage = error instanceof Error ? error.message : '人脸录入失败';
       Logger.error('人脸录入失败: %{public}s', JSON.stringify(error));
     } finally {
+      // 失败路径也需要显示消息（成功路径已有上方的 fade-in 动画）
+      if (this.enrollMessage !== '' && !this.enrollSuccess) {
+        setTimeout(() => {
+          this.getUIContext().animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
+            this.enrollResultOpacity = 1;
+            this.enrollResultY = 0;
+          });
+        }, 100);
+      }
       this.isEnrolling = false;
       this.stepText = '';
     }
@@ -169,7 +178,7 @@ struct FaceEnrollPage {
         Image($r('app.media.icon_back'))
           .width(21)
           .height(21)
-          .fillColor('#182431')
+          .fillColor(Colors.textPrimary)
       }
       .width(38)
       .height(38)
@@ -179,7 +188,7 @@ struct FaceEnrollPage {
       Text('人脸录入')
         .fontSize(20)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#182431')
+        .fontColor(Colors.textPrimary)
         .layoutWeight(1)
         .textAlign(TextAlign.Center)
       Text('')
@@ -200,20 +209,20 @@ struct FaceEnrollPage {
         .height(50)
         .fontSize(21)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#FFFFFF')
+        .fontColor(Colors.white)
         .textAlign(TextAlign.Center)
-        .backgroundColor('#007DFF')
+        .backgroundColor(Colors.primary)
         .borderRadius(25)
         .margin({ right: 13 })
       Column() {
         Text(this.userName)
           .fontSize(17)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
         if (this.currentUser) {
           Text(`${this.currentUser.studentNo} · ${this.currentUser.className}`)
             .fontSize(12)
-            .fontColor('#989A9C')
+            .fontColor(Colors.textTertiary)
             .margin({ top: 5 })
         }
       }
@@ -221,9 +230,9 @@ struct FaceEnrollPage {
       .alignItems(HorizontalAlign.Start)
       Text(this.currentUser?.faceEnrolled ? '已录入' : '未录入')
         .fontSize(12)
-        .fontColor(this.currentUser?.faceEnrolled ? '#34C759' : '#FF3B30')
+        .fontColor(this.currentUser?.faceEnrolled ? Colors.success : Colors.danger)
         .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-        .backgroundColor(this.currentUser?.faceEnrolled ? '#EEFAF1' : '#FFF1F0')
+        .backgroundColor(this.currentUser?.faceEnrolled ? Colors.successBg : Colors.dangerBg)
         .borderRadius(4)
     }
     .width('100%')
@@ -249,14 +258,14 @@ struct FaceEnrollPage {
             Image($r('app.media.icon_camera'))
               .width(54)
               .height(54)
-              .fillColor('#989A9C')
+              .fillColor(Colors.textTertiary)
             Text('拍照后在此预览')
               .fontSize(15)
-              .fontColor('#182431')
+              .fontColor(Colors.textPrimary)
               .margin({ top: 12 })
             Text('保持正脸、单人、光线均匀')
               .fontSize(12)
-              .fontColor('#989A9C')
+              .fontColor(Colors.textTertiary)
               .margin({ top: 5 })
           }
           .width('100%')
@@ -265,9 +274,9 @@ struct FaceEnrollPage {
         }
       }
       .width('100%')
-      .backgroundColor('#FFFFFF')
+      .backgroundColor(Colors.card)
       .borderRadius(8)
-      .border({ width: 1, color: '#E5E5E5' })
+      .border({ width: 1, color: Colors.border })
 
       this.progressBar()
 
@@ -276,16 +285,16 @@ struct FaceEnrollPage {
           Text(this.enrollSuccess ? '录入成功' : '录入未完成')
             .fontSize(14)
             .fontWeight(FontWeight.Bold)
-            .fontColor(this.enrollSuccess ? '#34C759' : '#FF3B30')
+            .fontColor(this.enrollSuccess ? Colors.success : Colors.danger)
           Text(this.enrollMessage)
             .fontSize(12)
-            .fontColor('#182431')
+            .fontColor(Colors.textPrimary)
             .margin({ top: 5 })
         }
         .width('100%')
         .alignItems(HorizontalAlign.Start)
         .padding(13)
-        .backgroundColor(this.enrollSuccess ? '#EEFAF1' : '#FFF1F0')
+        .backgroundColor(this.enrollSuccess ? Colors.successBg : Colors.dangerBg)
         .borderRadius(6)
         .margin({ top: 10 })
         .opacity(this.enrollResultOpacity)
@@ -323,13 +332,13 @@ struct FaceEnrollPage {
         .height(25)
         .fontSize(11)
         .fontWeight(FontWeight.Bold)
-        .fontColor(index <= this.currentStep ? '#FFFFFF' : '#989A9C')
+        .fontColor(index <= this.currentStep ? Colors.white : Colors.textTertiary)
         .textAlign(TextAlign.Center)
-        .backgroundColor(index <= this.currentStep ? '#007DFF' : '#E5E5E5')
+        .backgroundColor(index <= this.currentStep ? Colors.primary : Colors.border)
         .borderRadius(13)
       Text(label)
         .fontSize(10)
-        .fontColor(index <= this.currentStep ? '#007DFF' : '#989A9C')
+        .fontColor(index <= this.currentStep ? Colors.primary : Colors.textTertiary)
         .margin({ top: 4 })
     }
   }
@@ -339,7 +348,7 @@ struct FaceEnrollPage {
     Divider()
       .layoutWeight(1)
       .strokeWidth(2)
-      .color(targetIndex <= this.currentStep ? '#007DFF' : '#E5E5E5')
+      .color(targetIndex <= this.currentStep ? Colors.primary : Colors.border)
       .margin({ left: 4, right: 4, bottom: 14 })
   }
 
@@ -349,7 +358,7 @@ struct FaceEnrollPage {
       Text('录入要求')
         .fontSize(15)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#182431')
+        .fontColor(Colors.textPrimary)
         .alignSelf(ItemAlign.Start)
         .margin({ bottom: 10 })
       this.guideRow('01', '面部正对摄像头，不要侧脸或低头')
@@ -370,11 +379,11 @@ struct FaceEnrollPage {
     Row() {
       Text(index)
         .fontSize(11)
-        .fontColor('#007DFF')
+        .fontColor(Colors.primary)
         .width(28)
       Text(text)
         .fontSize(12)
-        .fontColor('#182431')
+        .fontColor(Colors.textPrimary)
         .layoutWeight(1)
     }
     .width('100%')
@@ -383,37 +392,29 @@ struct FaceEnrollPage {
 
   @Builder
   private actionPanel() {
-    Button() {
-      Row() {
-        Image($r('app.media.icon_camera'))
-          .width(19)
-          .height(19)
-          .fillColor('#FFFFFF')
-        Text(this.isEnrolling ? (this.stepText || '处理中') :
-          (this.currentUser?.faceEnrolled ? '重新录入人脸' : '拍照录入人脸'))
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#FFFFFF')
-          .margin({ left: 7 })
+    FaceEnrollButton({ animationEnabled: !this.isEnrolling }) {
+      Button() {
+        Row() {
+          Image($r('app.media.icon_camera'))
+            .width(19)
+            .height(19)
+            .fillColor(Colors.white)
+          Text(this.isEnrolling ? (this.stepText || '处理中') :
+            (this.currentUser?.faceEnrolled ? '重新录入人脸' : '拍照录入人脸'))
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Colors.white)
+            .margin({ left: 7 })
+        }
       }
+      .width('100%')
+      .height(48)
+      .type(ButtonType.Normal)
+      .backgroundColor(this.isEnrolling ? Colors.disabled : Colors.primary)
+      .borderRadius(6)
+      .shadow(this.isEnrolling ? { radius: 0, color: Color.Transparent } : Shadows.button)
+      .enabled(!this.isEnrolling)
+      .onClick(() => this.handleEnroll())
     }
-    .width('100%')
-    .height(48)
-    .type(ButtonType.Normal)
-    .backgroundColor(this.isEnrolling ? '#B8C1CC' : '#007DFF')
-    .borderRadius(6)
-    .shadow(this.isEnrolling ? { radius: 0, color: Color.Transparent } : Shadows.button)
-    .scale({ x: this.actionButtonScale, y: this.actionButtonScale })
-    .enabled(!this.isEnrolling)
-    .onTouch((event: TouchEvent) => {
-      if (this.isEnrolling) return;
-      this.getUIContext().animateTo({
-        duration: event.type === TouchType.Down ? 80 : 150,
-        curve: Curve.EaseOut
-      }, () => {
-        this.actionButtonScale = event.type === TouchType.Down ? 0.97 : 1;
-      });
-    })
-    .onClick(() => this.handleEnroll())
   }
 }

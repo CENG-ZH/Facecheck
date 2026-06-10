@@ -4,6 +4,7 @@ import { AppSettings, SettingsService } from '../services/SettingsService';
 import { PrivacyService } from '../services/PrivacyService';
 import { Logger } from '../utils/Logger';
 import { Colors, Radius, Shadows } from '../utils/DesignTokens';
+import { FaceEnrollButton } from '../components/FaceEnrollButton';
 
 @Entry
 @Component
@@ -47,7 +48,7 @@ struct SettingsPage {
       primaryButton: { value: '取消', action: () => {} },
       secondaryButton: {
         value: '确认清除',
-        fontColor: '#FF3B30',
+        fontColor: Colors.danger,
         action: () => {
           this.isClearing = true;
           this.privacyService.clearFaceAndAttendanceData().then(() => {
@@ -121,10 +122,10 @@ struct SettingsPage {
         Text('设置')
           .fontSize(21)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
         Text('识别策略、活体检测与隐私管理')
           .fontSize(12)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 2 })
       }
       .alignItems(HorizontalAlign.Start)
@@ -141,7 +142,7 @@ struct SettingsPage {
     Text(title)
       .fontSize(13)
       .fontWeight(FontWeight.Medium)
-      .fontColor('#989A9C')
+      .fontColor(Colors.textTertiary)
       .alignSelf(ItemAlign.Start)
       .margin({ top: 10, bottom: 8 })
   }
@@ -154,10 +155,10 @@ struct SettingsPage {
           Text('人脸匹配阈值')
             .fontSize(15)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#182431')
+            .fontColor(Colors.textPrimary)
           Text('官方同人判断通过且分数达到阈值才允许签到')
             .fontSize(12)
-            .fontColor('#989A9C')
+            .fontColor(Colors.textTertiary)
             .margin({ top: 4 })
         }
         .layoutWeight(1)
@@ -165,7 +166,7 @@ struct SettingsPage {
         Text(`${this.faceThreshold}%`)
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#007DFF')
+          .fontColor(Colors.primary)
           .translate({ y: this.thresholdBounceY })
       }
       .width('100%')
@@ -177,7 +178,7 @@ struct SettingsPage {
         style: SliderStyle.OutSet
       })
         .width('100%')
-        .selectedColor('#007DFF')
+        .selectedColor(Colors.primary)
         .margin({ top: 10 })
         .onChange((value: number, mode: SliderChangeMode) => {
           const newVal = Math.round(value);
@@ -194,11 +195,11 @@ struct SettingsPage {
       Row() {
         Text('宽松 60%')
           .fontSize(10)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
         Blank()
         Text('严格 95%')
           .fontSize(10)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
       }
       .width('100%')
     }
@@ -218,10 +219,10 @@ struct SettingsPage {
           Text('迟到判定')
             .fontSize(15)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#182431')
+            .fontColor(Colors.textPrimary)
           Text('场次开始后超过该时间记为迟到')
             .fontSize(12)
-            .fontColor('#989A9C')
+            .fontColor(Colors.textTertiary)
             .margin({ top: 4 })
         }
         .layoutWeight(1)
@@ -229,7 +230,7 @@ struct SettingsPage {
         Text(`${this.lateMinutes} 分钟`)
           .fontSize(16)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#F59E0B')
+          .fontColor(Colors.warning)
           .translate({ y: this.lateBounceY })
       }
       .width('100%')
@@ -241,7 +242,7 @@ struct SettingsPage {
         style: SliderStyle.OutSet
       })
         .width('100%')
-        .selectedColor('#F59E0B')
+        .selectedColor(Colors.warning)
         .margin({ top: 10 })
         .onChange((value: number, mode: SliderChangeMode) => {
           const newVal = Math.round(value / 5) * 5;
@@ -271,16 +272,16 @@ struct SettingsPage {
         Text('交互式活体检测')
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
         Text('检测时临时锁定竖屏，结束后恢复进入前方向')
           .fontSize(12)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 4 })
       }
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
       Toggle({ type: ToggleType.Switch, isOn: this.enableLiveness })
-        .selectedColor('#007DFF')
+        .selectedColor(Colors.primary)
         .onChange((isOn: boolean) => {
           this.enableLiveness = isOn;
           this.settingsService.setEnableLiveness(isOn).catch((error: Error) => {
@@ -300,13 +301,13 @@ struct SettingsPage {
   private systemPanel() {
     Column() {
       this.infoRow('应用版本', '1.1.0')
-      Divider().color('#E5E5E5').margin({ top: 12, bottom: 12 })
+      Divider().color(Colors.border).margin({ top: 12, bottom: 12 })
       this.infoRow('界面框架', 'ArkTS + ArkUI')
-      Divider().color('#E5E5E5').margin({ top: 12, bottom: 12 })
+      Divider().color(Colors.border).margin({ top: 12, bottom: 12 })
       this.infoRow('人脸能力', 'Core Vision Kit')
-      Divider().color('#E5E5E5').margin({ top: 12, bottom: 12 })
+      Divider().color(Colors.border).margin({ top: 12, bottom: 12 })
       this.infoRow('数据存储', 'ArkData RDB v3')
-      Divider().color('#E5E5E5').margin({ top: 12, bottom: 12 })
+      Divider().color(Colors.border).margin({ top: 12, bottom: 12 })
       this.infoRow('屏幕方向', '跟随系统自动旋转')
     }
     .width('100%')
@@ -323,22 +324,27 @@ struct SettingsPage {
       Text('本地敏感数据')
         .fontSize(15)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#182431')
+        .fontColor(Colors.textPrimary)
         .alignSelf(ItemAlign.Start)
       Text('人脸照片与考勤数据仅保存在应用沙箱。清除后保留人员、班级和课程基础信息。')
         .fontSize(12)
-        .fontColor('#989A9C')
+        .fontColor(Colors.textTertiary)
         .lineHeight(19)
         .margin({ top: 5, bottom: 12 })
-      Button(this.isClearing ? '正在清除' : '清除全部人脸与考勤数据')
-        .width('100%')
-        .height(40)
-        .fontSize(13)
-        .fontColor('#FF3B30')
-        .backgroundColor('#FFF1F0')
-        .borderRadius(6)
-        .enabled(!this.isClearing)
-        .onClick(() => this.confirmClearData())
+      Column() {
+        FaceEnrollButton({ animationEnabled: !this.isClearing }) {
+          Button(this.isClearing ? '正在清除' : '清除全部人脸与考勤数据')
+            .width('100%')
+            .height(40)
+            .fontSize(13)
+            .fontColor(Colors.danger)
+            .backgroundColor(Colors.dangerBg)
+            .borderRadius(6)
+            .enabled(!this.isClearing)
+            .onClick(() => this.confirmClearData())
+        }
+      }
+      .width('100%')
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
@@ -355,10 +361,10 @@ struct SettingsPage {
       Text('FaceCheck · 一起刷脸签到')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#182431')
+        .fontColor(Colors.textPrimary)
       Text('面向课堂考勤的 HarmonyOS 原生应用，支持课程名单快照、人脸比对、活体检测与横竖屏自适应。')
         .fontSize(12)
-        .fontColor('#989A9C')
+        .fontColor(Colors.textTertiary)
         .lineHeight(19)
         .margin({ top: 7 })
     }
@@ -375,11 +381,11 @@ struct SettingsPage {
     Row() {
       Text(label)
         .fontSize(13)
-        .fontColor('#989A9C')
+        .fontColor(Colors.textTertiary)
         .layoutWeight(1)
       Text(value)
         .fontSize(13)
-        .fontColor('#182431')
+        .fontColor(Colors.textPrimary)
     }
     .width('100%')
   }

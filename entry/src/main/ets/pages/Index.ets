@@ -22,6 +22,7 @@ import { Course } from '../models/OrganizationModel';
 import { DateUtils } from '../utils/DateUtils';
 import { Logger } from '../utils/Logger';
 import { Shadows, Radius, Colors } from '../utils/DesignTokens';
+import { FaceEnrollButton } from '../components/FaceEnrollButton';
 
 interface CheckInActivity {
   id: string;
@@ -59,7 +60,6 @@ struct HomePage {
   @State compactMode: boolean = false;
   @State expandedMode: boolean = false;
   @State checkInActivities: CheckInActivity[] = [];
-  @State buttonScale: number = 1;
   @State displayScore: number = 0;
   @State recentPanelOpacity: number = 0;
   @State resultOpacity: number = 0;
@@ -198,9 +198,9 @@ struct HomePage {
   }
 
   private getStatusColor(status: CheckInStatus): string {
-    if (status === CheckInStatus.NORMAL) return '#34C759';
-    if (status === CheckInStatus.LATE) return '#F59E0B';
-    return '#FF3B30';
+    if (status === CheckInStatus.NORMAL) return Colors.success;
+    if (status === CheckInStatus.LATE) return Colors.warning;
+    return Colors.danger;
   }
 
   private syncActivityFeed(): void {
@@ -510,10 +510,10 @@ struct HomePage {
         Text('FaceCheck')
           .fontSize(22)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#007DFF')
+          .fontColor(Colors.primary)
         Text('一起刷脸签到')
           .fontSize(12)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 2 })
       }
       .alignItems(HorizontalAlign.Start)
@@ -523,28 +523,30 @@ struct HomePage {
           Text(this.currentSession.courseName)
             .fontSize(13)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#182431')
+            .fontColor(Colors.textPrimary)
           Text('签到进行中')
             .fontSize(11)
-            .fontColor('#34C759')
+            .fontColor(Colors.success)
             .margin({ top: 2 })
         }
         .alignItems(HorizontalAlign.End)
       } else {
-        Button('发起签到')
-          .height(36)
-          .fontSize(13)
-          .backgroundColor('#007DFF')
-          .borderRadius(6)
-          .shadow({ radius: 8, color: '#20007DFF', offsetY: 3 })
-          .onClick(() => { this.showCreateSession = true; })
+        FaceEnrollButton() {
+          Button('发起签到')
+            .height(36)
+            .fontSize(13)
+            .backgroundColor(Colors.primary)
+            .borderRadius(6)
+            .shadow(Shadows.button)
+            .onClick(() => { this.showCreateSession = true; })
+        }
       }
     }
     .width('100%')
     .height(64)
     .padding({ left: 18, right: 18 })
-    .backgroundColor('#FFFFFF')
-    .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+    .backgroundColor(Colors.card)
+    .border({ width: { bottom: 0.5 }, color: Colors.border })
   }
 
   @Builder
@@ -554,65 +556,71 @@ struct HomePage {
         Text(this.currentSession.title)
           .fontSize(17)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
           .maxLines(2)
         Text(this.currentSession.courseName)
           .fontSize(13)
-          .fontColor('#007DFF')
+          .fontColor(Colors.primary)
           .margin({ top: 5 })
         Text(`开始于 ${DateUtils.formatTime(this.currentSession.startTime)}`)
           .fontSize(12)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 5 })
-        Button('结束本场')
-          .height(34)
-          .fontSize(12)
-          .fontColor('#FF3B30')
-          .backgroundColor('#FFF1F0')
-          .borderRadius(6)
-          .margin({ top: 14 })
-          .shadow({ radius: 5, color: '#20F53B3F', offsetY: 2 })
-          .onClick(() => this.endCurrentSession())
+        Column() {
+          FaceEnrollButton() {
+            Button('结束本场')
+              .height(34)
+              .fontSize(12)
+              .fontColor(Colors.danger)
+              .backgroundColor(Colors.dangerBg)
+              .borderRadius(6)
+              .shadow({ radius: 5, color: '#20F53B3F', offsetY: 2 })
+              .onClick(() => this.endCurrentSession())
+          }
+        }
+        .margin({ top: 14 })
       } else {
         Text('暂无进行中的签到')
           .fontSize(16)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
         Text('选择课程并生成固定应到名单')
           .fontSize(12)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 5, bottom: 14 })
-        Button('发起新签到')
-          .height(38)
-          .fontSize(13)
-          .backgroundColor('#007DFF')
-          .borderRadius(6)
-          .shadow({ radius: 8, color: '#20007DFF', offsetY: 3 })
-          .onClick(() => { this.showCreateSession = true; })
+        FaceEnrollButton() {
+          Button('发起新签到')
+            .height(38)
+            .fontSize(13)
+            .backgroundColor(Colors.primary)
+            .borderRadius(6)
+            .shadow(Shadows.button)
+            .onClick(() => { this.showCreateSession = true; })
+        }
       }
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(16)
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(Colors.card)
     .borderRadius(12)
-    .shadow({ radius: 15, color: '#1A000000', offsetY: 6 })
+    .shadow(Shadows.card)
     .margin({ bottom: 10 })
   }
 
   @Builder
   private statsStrip() {
     Row() {
-      this.statCell('应到', () => this.stats.totalUsers, '#007DFF')
-      this.statCell('已到', () => this.stats.checkedIn, '#34C759')
-      this.statCell('迟到', () => this.stats.lateCount, '#F59E0B')
-      this.statCell('未到', () => this.stats.absentCount, '#FF3B30')
+      this.statCell('应到', () => this.stats.totalUsers, Colors.primary)
+      this.statCell('已到', () => this.stats.checkedIn, Colors.success)
+      this.statCell('迟到', () => this.stats.lateCount, Colors.warning)
+      this.statCell('未到', () => this.stats.absentCount, Colors.danger)
     }
     .width('100%')
     .padding({ top: 12, bottom: 12 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(Colors.card)
     .borderRadius(12)
-    .shadow({ radius: 15, color: '#1A000000', offsetY: 6 })
+    .shadow(Shadows.card)
     .margin({ bottom: 10 })
   }
 
@@ -622,14 +630,14 @@ struct HomePage {
       Text('本场统计')
         .fontSize(15)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#182431')
+        .fontColor(Colors.textPrimary)
         .alignSelf(ItemAlign.Start)
         .margin({ bottom: 10 })
-      this.statRow('应到人数', () => this.stats.totalUsers, '#007DFF')
-      this.statRow('已签到', () => this.stats.checkedIn, '#34C759')
-      this.statRow('迟到', () => this.stats.lateCount, '#F59E0B')
-      this.statRow('未签到', () => this.stats.absentCount, '#FF3B30')
-      Divider().color('#E5E5E5').margin({ top: 6, bottom: 12 })
+      this.statRow('应到人数', () => this.stats.totalUsers, Colors.primary)
+      this.statRow('已签到', () => this.stats.checkedIn, Colors.success)
+      this.statRow('迟到', () => this.stats.lateCount, Colors.warning)
+      this.statRow('未签到', () => this.stats.absentCount, Colors.danger)
+      Divider().color(Colors.border).margin({ top: 6, bottom: 12 })
       CircleProgress({
         value: this.attendanceRate,
         circleSize: 90,
@@ -641,9 +649,9 @@ struct HomePage {
     }
     .width('100%')
     .padding(16)
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(Colors.card)
     .borderRadius(12)
-    .shadow({ radius: 15, color: '#1A000000', offsetY: 6 })
+    .shadow(Shadows.card)
   }
 
   @Builder
@@ -655,7 +663,7 @@ struct HomePage {
         .fontColor(color)
       Text(label)
         .fontSize(11)
-        .fontColor('#989A9C')
+        .fontColor(Colors.textTertiary)
         .margin({ top: 3 })
     }
     .layoutWeight(1)
@@ -666,7 +674,7 @@ struct HomePage {
     Row() {
       Text(label)
         .fontSize(13)
-        .fontColor('#989A9C')
+        .fontColor(Colors.textTertiary)
       Blank()
       Text(value().toString())
         .fontSize(17)
@@ -685,17 +693,17 @@ struct HomePage {
           Text('应到人员')
             .fontSize(17)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#182431')
+            .fontColor(Colors.textPrimary)
           Text(this.currentSession ? '名单已按场次冻结' : '发起签到后按课程生成名单')
             .fontSize(12)
-            .fontColor('#989A9C')
+            .fontColor(Colors.textTertiary)
             .margin({ top: 3 })
         }
         .alignItems(HorizontalAlign.Start)
         Blank()
         Text(`${this.filteredUsers.length} 人`)
           .fontSize(12)
-          .fontColor('#007DFF')
+          .fontColor(Colors.primary)
       }
       .width('100%')
       .padding({ bottom: 12 })
@@ -719,7 +727,7 @@ struct HomePage {
         }
         .layoutWeight(1)
         .width('100%')
-        .divider({ strokeWidth: 0.5, color: '#E5E5E5', startMargin: 45 })
+        .divider({ strokeWidth: 0.5, color: Colors.border, startMargin: 45 })
       } else {
         ForEach(this.filteredUsers, (user: UserModel) => {
           this.userRow(user)
@@ -736,9 +744,9 @@ struct HomePage {
     .height(fillHeight ? '100%' : undefined)
     .padding(16)
     .margin(fillHeight ? 12 : { bottom: 10 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(Colors.card)
     .borderRadius(12)
-    .shadow({ radius: 15, color: '#1A000000', offsetY: 6 })
+    .shadow(Shadows.card)
   }
 
   @Builder
@@ -756,30 +764,30 @@ struct HomePage {
         .height(34)
         .fontSize(14)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#FFFFFF')
+        .fontColor(Colors.white)
         .textAlign(TextAlign.Center)
-        .backgroundColor(this.selectedUserId === user.id ? '#007DFF' : '#989A9C')
+        .backgroundColor(this.selectedUserId === user.id ? Colors.primary : Colors.textTertiary)
         .borderRadius(17)
         .margin({ right: 10 })
       Column() {
         Text(user.name)
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
         Text(`${user.studentNo} · ${user.className}`)
           .fontSize(11)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 3 })
       }
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
       Text(user.faceEnrolled ? '已录入' : '未录入')
         .fontSize(11)
-        .fontColor(user.faceEnrolled ? '#34C759' : '#FF3B30')
+        .fontColor(user.faceEnrolled ? Colors.success : Colors.danger)
     }
     .width('100%')
     .padding({ left: 8, right: 8, top: 10, bottom: 10 })
-    .backgroundColor(this.selectedUserId === user.id ? '#EAF4FF' : '#FFFFFF')
+    .backgroundColor(this.selectedUserId === user.id ? Colors.primaryBg : Colors.card)
     .borderRadius(6)
     .onClick(() => {
       this.selectedUserId = user.id;
@@ -816,13 +824,13 @@ struct HomePage {
         .height(24)
         .fontSize(11)
         .fontWeight(FontWeight.Bold)
-        .fontColor(index <= this.currentStep ? '#FFFFFF' : '#989A9C')
+        .fontColor(index <= this.currentStep ? Colors.white : Colors.textTertiary)
         .textAlign(TextAlign.Center)
-        .backgroundColor(index <= this.currentStep ? '#007DFF' : '#E5E5E5')
+        .backgroundColor(index <= this.currentStep ? Colors.primary : Colors.border)
         .borderRadius(12)
       Text(label)
         .fontSize(10)
-        .fontColor(index <= this.currentStep ? '#007DFF' : '#989A9C')
+        .fontColor(index <= this.currentStep ? Colors.primary : Colors.textTertiary)
         .margin({ top: 4 })
     }
   }
@@ -832,7 +840,7 @@ struct HomePage {
     Divider()
       .layoutWeight(1)
       .strokeWidth(2)
-      .color(targetIndex <= this.currentStep ? '#007DFF' : '#E5E5E5')
+      .color(targetIndex <= this.currentStep ? Colors.primary : Colors.border)
       .margin({ left: 3, right: 3, bottom: 14 })
   }
 
@@ -844,10 +852,10 @@ struct HomePage {
           Text(this.checkResultSuccess ? '签到成功' : '签到未通过')
             .fontSize(14)
             .fontWeight(FontWeight.Bold)
-            .fontColor(this.checkResultSuccess ? '#34C759' : '#FF3B30')
+            .fontColor(this.checkResultSuccess ? Colors.success : Colors.danger)
           Text(this.checkResultMessage)
             .fontSize(12)
-            .fontColor('#182431')
+            .fontColor(Colors.textPrimary)
             .margin({ top: 4 })
         }
         .alignItems(HorizontalAlign.Start)
@@ -856,12 +864,12 @@ struct HomePage {
           Text(`${Math.round(this.displayScore * 100)}%`)
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
-            .fontColor(this.checkResultSuccess ? '#00B42A' : '#F53F3F')
+            .fontColor(this.checkResultSuccess ? Colors.success : Colors.danger)
         }
       }
       .width('100%')
       .padding(12)
-      .backgroundColor(this.checkResultSuccess ? '#EEFAF1' : '#FFF1F0')
+      .backgroundColor(this.checkResultSuccess ? Colors.successBg : Colors.dangerBg)
       .borderRadius(6)
       .margin({ top: 8 })
       .opacity(this.resultOpacity)
@@ -871,40 +879,33 @@ struct HomePage {
   @Builder
   private checkInButton() {
     Column() {
-      Button() {
-        Row() {
-          Image($r('app.media.icon_camera'))
-            .width(19)
-            .height(19)
-            .fillColor('#FFFFFF')
-          Text(this.isChecking ? (this.stepText || '处理中') :
-            (this.selectedUserName ? `为 ${this.selectedUserName} 签到` : '选择人员后刷脸签到'))
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#FFFFFF')
-            .margin({ left: 7 })
-            .maxLines(1)
+      FaceEnrollButton({ animationEnabled: this.selectedUserId >= 0 && !this.isChecking }) {
+        Button() {
+          Row() {
+            Image($r('app.media.icon_camera'))
+              .width(19)
+              .height(19)
+              .fillColor(Colors.white)
+            Text(this.isChecking ? (this.stepText || '处理中') :
+              (this.selectedUserName ? `为 ${this.selectedUserName} 签到` : '选择人员后刷脸签到'))
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Colors.white)
+              .margin({ left: 7 })
+              .maxLines(1)
+          }
         }
+        .width('100%')
+        .height(48)
+        .type(ButtonType.Normal)
+        .backgroundColor(this.selectedUserId >= 0 && !this.isChecking ? Colors.primary : Colors.disabled)
+        .borderRadius(6)
+        .shadow(this.selectedUserId >= 0 && !this.isChecking ? Shadows.button : { radius: 0, color: 'transparent', offsetY: 0 })
+        .enabled(this.selectedUserId >= 0 && !this.isChecking)
+        .onClick(() => this.handleFaceCheckIn())
       }
-      .width('100%')
-      .height(48)
-      .type(ButtonType.Normal)
-      .backgroundColor(this.selectedUserId >= 0 && !this.isChecking ? '#007DFF' : '#B8C1CC')
-      .borderRadius(6)
-      .shadow(this.selectedUserId >= 0 && !this.isChecking ? { radius: 8, color: '#20007DFF', offsetY: 3 } : { radius: 0, color: 'transparent', offsetY: 0 })
-      .enabled(this.selectedUserId >= 0 && !this.isChecking)
-      .onClick(() => this.handleFaceCheckIn())
     }
     .width('100%')
-    .scale({ x: this.buttonScale, y: this.buttonScale })
-    .onTouch((event: TouchEvent) => {
-      if (this.selectedUserId < 0 || this.isChecking) return;
-      if (event.type === TouchType.Down) {
-        this.getUIContext().animateTo({ duration: 80 }, () => { this.buttonScale = 0.96; });
-      } else {
-        this.getUIContext().animateTo({ duration: 150, curve: Curve.EaseOut }, () => { this.buttonScale = 1; });
-      }
-    })
     .margin({ top: 10 })
   }
 
@@ -918,8 +919,8 @@ struct HomePage {
     }
     .width('100%')
     .padding({ left: 12, right: 12, top: 8, bottom: 10 })
-    .backgroundColor('#FFFFFF')
-    .border({ width: { top: 0.5 }, color: '#E5E5E5' })
+    .backgroundColor(Colors.card)
+    .border({ width: { top: 0.5 }, color: Colors.border })
   }
 
   @Builder
@@ -930,11 +931,11 @@ struct HomePage {
           .width(7)
           .height(7)
           .fill(this.checkInActivities.length > 0 && !this.checkInActivities[0].success
-            ? '#FF3B30' : '#34C759')
+            ? Colors.danger : Colors.success)
         Text('实时')
           .fontSize(11)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
           .margin({ left: 6 })
       }
       .width(54)
@@ -943,7 +944,7 @@ struct HomePage {
         .height(30)
         .fontSize(12)
         .fontColor(this.checkInActivities.length > 0 && !this.checkInActivities[0].success
-          ? '#C62828' : '#52606D')
+          ? Colors.dangerDark : Colors.textSecondary)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .maxLines(1)
     }
@@ -951,7 +952,7 @@ struct HomePage {
     .height(38)
     .padding({ left: 10, right: 10 })
     .backgroundColor(this.checkInActivities.length > 0 && !this.checkInActivities[0].success
-      ? '#FFF1F0' : '#F1F7F3')
+      ? Colors.dangerBg : Colors.successBgAlt)
     .borderRadius(6)
     .margin({ bottom: 6 })
   }
@@ -962,13 +963,13 @@ struct HomePage {
       Text('实时签到动态')
         .fontSize(dense ? 14 : 16)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#182431')
+        .fontColor(Colors.textPrimary)
         .alignSelf(ItemAlign.Start)
         .margin({ bottom: 8 })
       if (this.checkInActivities.length === 0) {
         Text('暂无签到动态')
           .fontSize(13)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .width('100%')
           .textAlign(TextAlign.Center)
           .padding({ top: 28, bottom: 28 })
@@ -981,21 +982,21 @@ struct HomePage {
                   Circle()
                     .width(7)
                     .height(7)
-                    .fill(activity.success ? '#34C759' : '#FF3B30')
+                    .fill(activity.success ? Colors.success : Colors.danger)
                     .margin({ right: dense ? 7 : 9 })
                   Column() {
                     Text(activity.userName)
                       .fontSize(dense ? 12 : 13)
                       .fontWeight(FontWeight.Medium)
-                      .fontColor('#182431')
+                      .fontColor(Colors.textPrimary)
                     Text(`${DateUtils.formatTime(activity.time)}${activity.score > 0
                       ? ` · ${(activity.score * 100).toFixed(0)}%` : ''}`)
                       .fontSize(dense ? 10 : 11)
-                      .fontColor('#989A9C')
+                      .fontColor(Colors.textTertiary)
                       .margin({ top: 3 })
                     Text(activity.message)
                       .fontSize(dense ? 10 : 11)
-                      .fontColor(activity.success ? '#52606D' : '#C62828')
+                      .fontColor(activity.success ? Colors.textSecondary : Colors.dangerDark)
                       .maxLines(2)
                       .margin({ top: 3 })
                   }
@@ -1008,7 +1009,7 @@ struct HomePage {
                 }
                 .width('100%')
                 .padding({ top: dense ? 8 : 10, bottom: dense ? 8 : 10 })
-                .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+                .border({ width: { bottom: 0.5 }, color: Colors.border })
               }
             }
           }, (activity: CheckInActivity) => activity.id)
@@ -1024,9 +1025,9 @@ struct HomePage {
     .width('100%')
     .layoutWeight(1)
     .padding(dense ? 12 : 16)
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(Colors.card)
     .borderRadius(12)
-    .shadow({ radius: 15, color: '#1A000000', offsetY: 6 })
+    .shadow(Shadows.card)
     .margin({ top: dense ? 10 : 0 })
   }
 
@@ -1042,35 +1043,35 @@ struct HomePage {
         Text('发起课程签到')
           .fontSize(19)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
         Text('创建时会把当前选课学生冻结为本场应到名单')
           .fontSize(12)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 5, bottom: 15 })
         Text('选择课程')
           .fontSize(13)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
           .alignSelf(ItemAlign.Start)
         Column() {
           ForEach(this.courses, (course: Course) => {
             Row() {
               Text(course.name)
                 .fontSize(14)
-                .fontColor('#182431')
+                .fontColor(Colors.textPrimary)
                 .layoutWeight(1)
               Text(course.code)
                 .fontSize(11)
-                .fontColor('#989A9C')
+                .fontColor(Colors.textTertiary)
               Circle()
                 .width(16)
                 .height(16)
-                .fill(this.selectedCourseId === course.id ? '#007DFF' : '#FFFFFF')
-                .border({ width: 1.5, color: this.selectedCourseId === course.id ? '#007DFF' : '#B8C1CC' })
+                .fill(this.selectedCourseId === course.id ? Colors.primary : Colors.card)
+                .border({ width: 1.5, color: this.selectedCourseId === course.id ? Colors.primary : Colors.disabled })
                 .margin({ left: 10 })
             }
             .width('100%')
             .padding({ top: 11, bottom: 11 })
-            .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+            .border({ width: { bottom: 0.5 }, color: Colors.border })
             .onClick(() => { this.selectedCourseId = course.id; })
           }, (course: Course) => course.id.toString())
         }
@@ -1083,21 +1084,31 @@ struct HomePage {
           .borderRadius(6)
           .onChange((value: string) => { this.newSessionTitle = value; })
         Row() {
-          Button('取消')
-            .layoutWeight(1)
-            .height(42)
-            .fontColor('#182431')
-            .backgroundColor(Colors.bg)
-            .borderRadius(6)
-            .margin({ right: 6 })
-            .onClick(() => { this.showCreateSession = false; })
-          Button('创建场次')
-            .layoutWeight(1)
-            .height(42)
-            .backgroundColor('#007DFF')
-            .borderRadius(6)
-            .margin({ left: 6 })
-            .onClick(() => this.createSession())
+          Column() {
+            FaceEnrollButton() {
+              Button('取消')
+                .width('100%')
+                .height(42)
+                .fontColor(Colors.textPrimary)
+                .backgroundColor(Colors.bg)
+                .borderRadius(6)
+                .onClick(() => { this.showCreateSession = false; })
+            }
+          }
+          .layoutWeight(1)
+          .margin({ right: 6 })
+          Column() {
+            FaceEnrollButton() {
+              Button('创建场次')
+                .width('100%')
+                .height(42)
+                .backgroundColor(Colors.primary)
+                .borderRadius(6)
+                .onClick(() => this.createSession())
+            }
+          }
+          .layoutWeight(1)
+          .margin({ left: 6 })
         }
         .width('100%')
         .margin({ top: 18 })
@@ -1105,7 +1116,7 @@ struct HomePage {
       .width(this.compactMode ? '90%' : 430)
       .constraintSize({ maxHeight: '82%' })
       .padding(22)
-      .backgroundColor('#FFFFFF')
+      .backgroundColor(Colors.card)
       .shadow(Shadows.card)
       .borderRadius(Radius.card)
     }
