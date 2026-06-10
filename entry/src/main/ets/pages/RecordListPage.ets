@@ -170,11 +170,11 @@ struct RecordListPage {
       }
 
       AppBottomNav({ active: 'records' })
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(Colors.bg)
     }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(Colors.bg)
+  }
 
   @Builder
   private header() {
