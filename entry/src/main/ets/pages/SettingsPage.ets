@@ -3,6 +3,7 @@ import { AppBottomNav } from '../components/AppBottomNav';
 import { AppSettings, SettingsService } from '../services/SettingsService';
 import { PrivacyService } from '../services/PrivacyService';
 import { Logger } from '../utils/Logger';
+import { Colors, Radius, Shadows } from '../utils/DesignTokens';
 
 @Entry
 @Component
@@ -110,7 +111,7 @@ struct SettingsPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F1F3F5')
+    .backgroundColor(Colors.bg)
   }
 
   @Builder
@@ -131,8 +132,8 @@ struct SettingsPage {
     .width('100%')
     .height(64)
     .padding({ left: 18, right: 18 })
-    .backgroundColor('#FFFFFF')
-    .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+    .backgroundColor(Colors.card)
+    .border({ width: { bottom: 0.5 }, color: Colors.border })
   }
 
   @Builder
@@ -186,8 +187,8 @@ struct SettingsPage {
               Logger.error('保存人脸阈值失败: %{public}s', error.message);
             });
             this.thresholdBounceY = -3;
-            animateTo({ duration: 80 }, () => { this.thresholdBounceY = 2; });
-            animateTo({ duration: 100, delay: 80 }, () => { this.thresholdBounceY = 0; });
+            this.getUIContext().animateTo({ duration: 80 }, () => { this.thresholdBounceY = 2; });
+            this.getUIContext().animateTo({ duration: 100, delay: 80 }, () => { this.thresholdBounceY = 0; });
           }
         })
       Row() {
@@ -203,8 +204,9 @@ struct SettingsPage {
     }
     .width('100%')
     .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .backgroundColor(Colors.card)
+    .borderRadius(Radius.card)
+    .shadow(Shadows.card)
     .margin({ bottom: 8 })
   }
 
@@ -249,15 +251,16 @@ struct SettingsPage {
               Logger.error('保存迟到时间失败: %{public}s', error.message);
             });
             this.lateBounceY = -3;
-            animateTo({ duration: 80 }, () => { this.lateBounceY = 2; });
-            animateTo({ duration: 100, delay: 80 }, () => { this.lateBounceY = 0; });
+            this.getUIContext().animateTo({ duration: 80 }, () => { this.lateBounceY = 2; });
+            this.getUIContext().animateTo({ duration: 100, delay: 80 }, () => { this.lateBounceY = 0; });
           }
         })
     }
     .width('100%')
     .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .backgroundColor(Colors.card)
+    .borderRadius(Radius.card)
+    .shadow(Shadows.card)
     .margin({ bottom: 8 })
   }
 
@@ -287,8 +290,9 @@ struct SettingsPage {
     }
     .width('100%')
     .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .backgroundColor(Colors.card)
+    .borderRadius(Radius.card)
+    .shadow(Shadows.card)
     .margin({ bottom: 8 })
   }
 
@@ -307,8 +311,9 @@ struct SettingsPage {
     }
     .width('100%')
     .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .backgroundColor(Colors.card)
+    .borderRadius(Radius.card)
+    .shadow(Shadows.card)
     .margin({ bottom: 8 })
   }
 
@@ -338,8 +343,9 @@ struct SettingsPage {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .backgroundColor(Colors.card)
+    .borderRadius(Radius.card)
+    .shadow(Shadows.card)
     .margin({ bottom: 8 })
   }
 
@@ -359,8 +365,9 @@ struct SettingsPage {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .backgroundColor(Colors.card)
+    .borderRadius(Radius.card)
+    .shadow(Shadows.card)
   }
 
   @Builder

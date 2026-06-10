@@ -9,6 +9,7 @@ export struct AnimatedCard {
   @Prop delay: number = 0;
   @BuilderParam content: () => void;
   private timerId: number = -1;
+  private hasAnimated: boolean = false;
 
   aboutToDisappear(): void {
     if (this.timerId !== -1) {
@@ -24,9 +25,10 @@ export struct AnimatedCard {
     .translate({ y: this.cardTranslateY })
     .opacity(this.cardOpacity)
     .onVisibleAreaChange([0], (isExpanding: boolean, ratio: number) => {
-      if (isExpanding && this.cardTranslateY !== 0) {
+      if (isExpanding && ratio > 0 && !this.hasAnimated) {
+        this.hasAnimated = true;
         this.timerId = setTimeout(() => {
-          animateTo({
+          this.getUIContext().animateTo({
             duration: 350,
             curve: Curve.EaseOut,
             delay: this.delay
@@ -34,6 +36,7 @@ export struct AnimatedCard {
             this.cardTranslateY = 0;
             this.cardOpacity = 1;
           });
+          this.timerId = -1;
         }, 50);
       }
     })

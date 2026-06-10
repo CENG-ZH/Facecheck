@@ -4,6 +4,7 @@ import { OrganizationService } from '../services/OrganizationService';
 import { AdminClass, Course } from '../models/OrganizationModel';
 import { Logger } from '../utils/Logger';
 import { Shadows, Radius, Colors } from '../utils/DesignTokens';
+import { AnimatedCard } from '../components/AnimatedCard';
 
 @Entry
 @Component
@@ -240,9 +241,10 @@ struct OrganizationPage {
         })
       }
       List() {
-        ForEach(this.classes, (item: AdminClass) => {
+        ForEach(this.classes, (item: AdminClass, index: number) => {
           ListItem() {
-            Row() {
+            AnimatedCard({ delay: Math.min(index, 8) * 35 }) {
+              Row() {
               Column() {
                 Text(item.name)
                   .fontSize(15)
@@ -265,7 +267,8 @@ struct OrganizationPage {
             }
             .width('100%')
             .padding(15)
-            .backgroundColor('#FFFFFF')
+              .backgroundColor(Colors.card)
+            }
           }
         }, (item: AdminClass) => item.id.toString())
       }
@@ -290,9 +293,10 @@ struct OrganizationPage {
         })
       }
       List() {
-        ForEach(this.courses, (item: Course) => {
+        ForEach(this.courses, (item: Course, index: number) => {
           ListItem() {
-            Row() {
+            AnimatedCard({ delay: Math.min(index, 8) * 35 }) {
+              Row() {
               Column() {
                 Text(item.name)
                   .fontSize(15)
@@ -315,7 +319,8 @@ struct OrganizationPage {
             }
             .width('100%')
             .padding(15)
-            .backgroundColor('#FFFFFF')
+              .backgroundColor(Colors.card)
+            }
           }
         }, (item: Course) => item.id.toString())
       }

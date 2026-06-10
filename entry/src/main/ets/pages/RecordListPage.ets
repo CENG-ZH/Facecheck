@@ -7,8 +7,14 @@ import { AttendanceRecord, AttendanceSession, CheckInStatus } from '../models/At
 import { UserModel } from '../models/UserModel';
 import { DateUtils } from '../utils/DateUtils';
 import { Logger } from '../utils/Logger';
-import { ExportService } from '../services/ExportService';
+import { AttendanceAbsentRow, ExportService } from '../services/ExportService';
 import { Shadows, Radius, Colors } from '../utils/DesignTokens';
+import { AnimatedCard } from '../components/AnimatedCard';
+
+interface SessionMemberSnapshot {
+  sessionId: number;
+  user: UserModel;
+}
 
 @Entry
 @Component
@@ -16,7 +22,9 @@ struct RecordListPage {
   @State records: AttendanceRecord[] = [];
   @State sessions: AttendanceSession[] = [];
   @State users: UserModel[] = [];
+  @State expectedMembers: SessionMemberSnapshot[] = [];
   @State selectedSessionId: number = -1;
+  @State selectedClassName: string = '';
   @State searchKeyword: string = '';
   @State dateKeyword: string = '';
   @State expandedMode: boolean = false;
@@ -38,7 +46,7 @@ struct RecordListPage {
     await this.loadData();
     // 触发列表入场动画
     setTimeout(() => {
-      animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
+      this.getUIContext().animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
         this.listOpacity = 1;
         this.listTranslateY = 0;
       });
@@ -60,13 +68,25 @@ struct RecordListPage {
       this.records = this.selectedSessionId > 0
         ? await this.attendanceService.getSessionRecords(this.selectedSessionId)
         : await this.attendanceService.getAllRecords();
+      const snapshots: SessionMemberSnapshot[] = [];
+      for (let index = 0; index < this.sessions.length; index++) {
+        const session = this.sessions[index];
+        const members = await this.attendanceService.getSessionMembers(session.id);
+        members.forEach((user: UserModel) => {
+          snapshots.push({ sessionId: session.id, user: user });
+        });
+      }
+      this.expectedMembers = snapshots;
     } catch (error) {
       Logger.error('加载考勤记录失败: %{public}s', JSON.stringify(error));
     }
   }
 
-  private getUser(userId: number): UserModel | undefined {
-    return this.users.find((user: UserModel) => user.id === userId);
+  private getRecordUser(record: AttendanceRecord): UserModel | undefined {
+    const snapshot = this.expectedMembers.find((item: SessionMemberSnapshot) =>
+      item.sessionId === record.sessionId && item.user.id === record.userId
+    );
+    return snapshot?.user ?? this.users.find((user: UserModel) => user.id === record.userId);
   }
 
   private getSession(sessionId: number): AttendanceSession | undefined {
@@ -89,13 +109,31 @@ struct RecordListPage {
     const keyword = this.searchKeyword.trim().toLowerCase();
     const date = this.dateKeyword.trim();
     return this.records.filter((record: AttendanceRecord) => {
-      const user = this.getUser(record.userId);
+      const user = this.getRecordUser(record);
       const matchesKeyword = keyword === '' ||
         user?.name.toLowerCase().includes(keyword) ||
         user?.studentNo.toLowerCase().includes(keyword);
+      const matchesClass = this.selectedClassName === '' || user?.className === this.selectedClassName;
       const matchesDate = date === '' || DateUtils.formatDate(record.checkInTime).includes(date);
-      return matchesKeyword && matchesDate;
+      return matchesKeyword && matchesClass && matchesDate;
     });
+  }
+
+  private getClassNames(): string[] {
+    const names: string[] = [];
+    this.expectedMembers.forEach((item: SessionMemberSnapshot) => {
+      const className = item.user.className.trim();
+      if (className !== '' && !names.includes(className)) {
+        names.push(className);
+      }
+    });
+    this.users.forEach((user: UserModel) => {
+      const className = user.className.trim();
+      if (className !== '' && !names.includes(className)) {
+        names.push(className);
+      }
+    });
+    return names.sort();
   }
 
   private getNormalCount(): number {
@@ -111,13 +149,50 @@ struct RecordListPage {
   }
 
   private getAbsentCount(): number {
-    return this.getFilteredRecords().filter((record: AttendanceRecord) =>
-      record.status === CheckInStatus.FAILED
-    ).length;
+    return this.getFilteredAbsentRows().length;
+  }
+
+  private getFilteredAbsentRows(): AttendanceAbsentRow[] {
+    const keyword = this.searchKeyword.trim().toLowerCase();
+    const date = this.dateKeyword.trim();
+    const absentRows: AttendanceAbsentRow[] = [];
+    this.expectedMembers.forEach((item: SessionMemberSnapshot) => {
+      if (this.selectedSessionId > 0 && item.sessionId !== this.selectedSessionId) {
+        return;
+      }
+      const session = this.getSession(item.sessionId);
+      if (date !== '' && (!session || !DateUtils.formatDate(session.startTime).includes(date))) {
+        return;
+      }
+      const matchesKeyword = keyword === '' ||
+        item.user.name.toLowerCase().includes(keyword) ||
+        item.user.studentNo.toLowerCase().includes(keyword);
+      const matchesClass = this.selectedClassName === '' ||
+        item.user.className === this.selectedClassName;
+      if (!matchesKeyword || !matchesClass) {
+        return;
+      }
+      const hasCheckedIn = this.records.some((record: AttendanceRecord) =>
+        record.sessionId === item.sessionId && record.userId === item.user.id
+      );
+      if (!hasCheckedIn) {
+        absentRows.push({
+          sessionId: item.sessionId,
+          userName: item.user.name,
+          studentNo: item.user.studentNo,
+          className: item.user.className
+        });
+      }
+    });
+    return absentRows;
+  }
+
+  private getReportRowCount(): number {
+    return this.getFilteredRecords().length + this.getFilteredAbsentRows().length;
   }
 
   private async exportRecords(): Promise<void> {
-    if (this.isExporting || this.getFilteredRecords().length === 0) {
+    if (this.isExporting || this.getReportRowCount() === 0) {
       return;
     }
     const context = this.getUIContext().getHostContext();
@@ -134,7 +209,8 @@ struct RecordListPage {
         context,
         this.getFilteredRecords(),
         this.sessions,
-        this.users
+        this.users,
+        this.getFilteredAbsentRows()
       );
       this.getUIContext().getPromptAction().showToast({
         message: 'CSV 报表已导出',
@@ -151,6 +227,7 @@ struct RecordListPage {
     Column() {
       this.header()
       this.filterBar()
+      this.classSelector()
       this.sessionSelector()
       this.summaryBar()
 
@@ -177,6 +254,41 @@ struct RecordListPage {
   }
 
   @Builder
+  private classSelector() {
+    Scroll() {
+      Row() {
+        Text('全部班级')
+          .fontSize(12)
+          .fontColor(this.selectedClassName === '' ? Colors.card : Colors.textPrimary)
+          .padding({ left: 12, right: 12, top: 7, bottom: 7 })
+          .backgroundColor(this.selectedClassName === '' ? Colors.primary : Colors.card)
+          .borderRadius(Radius.button)
+          .margin({ right: 7 })
+          .onClick(() => {
+            this.selectedClassName = '';
+          })
+        ForEach(this.getClassNames(), (className: string) => {
+          Text(className)
+            .fontSize(12)
+            .fontColor(this.selectedClassName === className ? Colors.card : Colors.textPrimary)
+            .padding({ left: 12, right: 12, top: 7, bottom: 7 })
+            .backgroundColor(this.selectedClassName === className ? Colors.primary : Colors.card)
+            .borderRadius(Radius.button)
+            .margin({ right: 7 })
+            .maxLines(1)
+            .onClick(() => {
+              this.selectedClassName = className;
+            })
+        }, (className: string) => className)
+      }
+      .padding({ left: 14, right: 14, bottom: 8 })
+    }
+    .width('100%')
+    .scrollable(ScrollDirection.Horizontal)
+    .scrollBar(BarState.Off)
+  }
+
+  @Builder
   private header() {
     Row() {
       Column() {
@@ -197,7 +309,7 @@ struct RecordListPage {
         .fontColor('#007DFF')
         .backgroundColor('#EAF4FF')
         .borderRadius(6)
-        .enabled(!this.isExporting && this.getFilteredRecords().length > 0)
+        .enabled(!this.isExporting && this.getReportRowCount() > 0)
         .onClick(() => this.exportRecords())
     }
     .width('100%')
@@ -272,10 +384,10 @@ struct RecordListPage {
   @Builder
   private summaryBar() {
     Row() {
-      this.summaryCell('记录', this.getFilteredRecords().length, '#007DFF')
-      this.summaryCell('正常', this.getNormalCount(), '#34C759')
-      this.summaryCell('迟到', this.getLateCount(), '#F59E0B')
-      this.summaryCell('缺勤', this.getAbsentCount(), '#FF3B30')
+      this.summaryCell('记录', () => this.getFilteredRecords().length, '#007DFF')
+      this.summaryCell('正常', () => this.getNormalCount(), '#34C759')
+      this.summaryCell('迟到', () => this.getLateCount(), '#F59E0B')
+      this.summaryCell('缺勤', () => this.getAbsentCount(), '#FF3B30')
     }
     .width('100%')
     .height(58)
@@ -285,9 +397,9 @@ struct RecordListPage {
   }
 
   @Builder
-  private summaryCell(label: string, value: number, color: string) {
+  private summaryCell(label: string, value: () => number, color: string) {
     Row() {
-      Text(value.toString())
+      Text(value().toString())
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(color)
@@ -305,7 +417,8 @@ struct RecordListPage {
     List() {
       ForEach(this.getFilteredRecords(), (record: AttendanceRecord, index: number) => {
         ListItem() {
-          Column() {
+          AnimatedCard({ delay: Math.min(index, 8) * 35 }) {
+            Column() {
             Row() {
               Circle()
                 .width(8)
@@ -313,11 +426,11 @@ struct RecordListPage {
                 .fill(this.getStatusColor(record.status))
                 .margin({ right: 10 })
                 Column() {
-                  Text(this.getUser(record.userId)?.name ?? '历史用户')
+                  Text(this.getRecordUser(record)?.name ?? '历史用户')
                     .fontSize(15)
                     .fontWeight(FontWeight.Medium)
                     .fontColor('#182431')
-                  Text(`${this.getUser(record.userId)?.studentNo ?? ''} · ${this.getUser(record.userId)?.className ?? ''}`)
+                  Text(`${this.getRecordUser(record)?.studentNo ?? ''} · ${this.getRecordUser(record)?.className ?? ''}`)
                     .fontSize(11)
                     .fontColor('#989A9C')
                     .margin({ top: 3 })
@@ -350,10 +463,11 @@ struct RecordListPage {
             }
             .width('100%')
             .padding(14)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12)
-            .shadow({ radius: 15, color: '#1A000000', offsetY: 6 })
+            .backgroundColor(Colors.card)
+            .borderRadius(Radius.card)
+            .shadow(Shadows.card)
           }
+        }
       }, (record: AttendanceRecord) => record.id.toString())
     }
     .opacity(this.listOpacity)
@@ -380,15 +494,16 @@ struct RecordListPage {
       .padding({ left: 14, right: 14 })
       .backgroundColor('#F7F8FA')
       List() {
-        ForEach(this.getFilteredRecords(), (record: AttendanceRecord) => {
+        ForEach(this.getFilteredRecords(), (record: AttendanceRecord, index: number) => {
           ListItem() {
-            Row() {
+            AnimatedCard({ delay: Math.min(index, 8) * 30 }) {
+              Row() {
               this.tableText(
-                `${this.getUser(record.userId)?.name ?? '历史用户'}\n${this.getUser(record.userId)?.studentNo ?? ''}`,
+                `${this.getRecordUser(record)?.name ?? '历史用户'}\n${this.getRecordUser(record)?.studentNo ?? ''}`,
                 2,
                 '#182431'
               )
-              this.tableText(this.getUser(record.userId)?.className ?? '', 2, '#182431')
+              this.tableText(this.getRecordUser(record)?.className ?? '', 2, '#182431')
               this.tableText(
                 `${this.getSession(record.sessionId)?.courseName ?? '历史课程'}\n${this.getSession(record.sessionId)?.title ?? ''}`,
                 3,
@@ -410,7 +525,8 @@ struct RecordListPage {
             .width('100%')
             .constraintSize({ minHeight: 58 })
             .padding({ left: 14, right: 14, top: 9, bottom: 9 })
-            .backgroundColor('#FFFFFF')
+              .backgroundColor(Colors.card)
+            }
           }
         }, (record: AttendanceRecord) => record.id.toString())
       }

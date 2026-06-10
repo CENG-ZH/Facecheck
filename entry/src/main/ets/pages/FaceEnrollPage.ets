@@ -5,6 +5,7 @@ import { UserModel } from '../models/UserModel';
 import { FaceVisionAdapter } from '../kits/FaceVisionAdapter';
 import { CameraAdapter } from '../kits/CameraAdapter';
 import { Logger } from '../utils/Logger';
+import { Colors, Radius, Shadows } from '../utils/DesignTokens';
 
 @Entry
 @Component
@@ -21,6 +22,7 @@ struct FaceEnrollPage {
   @State stepText: string = '';
   @State enrollResultOpacity: number = 0;
   @State enrollResultY: number = 20;
+  @State actionButtonScale: number = 1;
 
   private userService: UserService = new UserService();
   private compactListener?: mediaquery.MediaQueryListener;
@@ -102,7 +104,7 @@ struct FaceEnrollPage {
       await this.loadUser();
       this.getUIContext().getPromptAction().showToast({ message: '人脸录入成功', duration: 2000 });
       setTimeout(() => {
-        animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
+        this.getUIContext().animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
           this.enrollResultOpacity = 1;
           this.enrollResultY = 0;
         });
@@ -143,7 +145,7 @@ struct FaceEnrollPage {
           .width('42%')
           .height('100%')
           .padding(16)
-          .backgroundColor('#F1F3F5')
+          .backgroundColor(Colors.bg)
           Column() {
             this.capturePanel()
           }
@@ -157,7 +159,7 @@ struct FaceEnrollPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F1F3F5')
+    .backgroundColor(Colors.bg)
   }
 
   @Builder
@@ -186,8 +188,8 @@ struct FaceEnrollPage {
     .width('100%')
     .height(60)
     .padding({ left: 12, right: 12 })
-    .backgroundColor('#FFFFFF')
-    .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+    .backgroundColor(Colors.card)
+    .border({ width: { bottom: 0.5 }, color: Colors.border })
   }
 
   @Builder
@@ -226,8 +228,9 @@ struct FaceEnrollPage {
     }
     .width('100%')
     .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .backgroundColor(Colors.card)
+    .borderRadius(Radius.card)
+    .shadow(Shadows.card)
     .margin({ bottom: 10 })
   }
 
@@ -291,8 +294,9 @@ struct FaceEnrollPage {
     }
     .width('100%')
     .padding(14)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .backgroundColor(Colors.card)
+    .borderRadius(Radius.card)
+    .shadow(Shadows.card)
     .margin({ bottom: 10 })
   }
 
@@ -355,8 +359,9 @@ struct FaceEnrollPage {
     }
     .width('100%')
     .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .backgroundColor(Colors.card)
+    .borderRadius(Radius.card)
+    .shadow(Shadows.card)
     .margin({ bottom: 10 })
   }
 
@@ -397,7 +402,18 @@ struct FaceEnrollPage {
     .type(ButtonType.Normal)
     .backgroundColor(this.isEnrolling ? '#B8C1CC' : '#007DFF')
     .borderRadius(6)
+    .shadow(this.isEnrolling ? { radius: 0, color: Color.Transparent } : Shadows.button)
+    .scale({ x: this.actionButtonScale, y: this.actionButtonScale })
     .enabled(!this.isEnrolling)
+    .onTouch((event: TouchEvent) => {
+      if (this.isEnrolling) return;
+      this.getUIContext().animateTo({
+        duration: event.type === TouchType.Down ? 80 : 150,
+        curve: Curve.EaseOut
+      }, () => {
+        this.actionButtonScale = event.type === TouchType.Down ? 0.97 : 1;
+      });
+    })
     .onClick(() => this.handleEnroll())
   }
 }

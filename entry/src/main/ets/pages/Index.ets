@@ -38,6 +38,7 @@ interface CheckInActivity {
 struct HomePage {
   @State currentSession: AttendanceSession | null = null;
   @State stats: AttendanceStats = { totalUsers: 0, checkedIn: 0, lateCount: 0, absentCount: 0 };
+  @State attendanceRate: number = 0;
   @State recentRecords: AttendanceRecord[] = [];
   @State allUsers: UserModel[] = [];
   @State filteredUsers: UserModel[] = [];
@@ -86,7 +87,7 @@ struct HomePage {
     });
     // 触发 recentPanel 淡入动画
     setTimeout(() => {
-      animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
+      this.getUIContext().animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
         this.recentPanelOpacity = 1;
       });
     }, 100);
@@ -131,24 +132,47 @@ struct HomePage {
 
       if (this.currentSession) {
         this.allUsers = await this.attendanceService.getSessionMembers(this.currentSession.id);
-        this.stats = await this.attendanceService.getSessionStats(this.currentSession.id);
+        this.stats = this.normalizeStats(await this.attendanceService.getSessionStats(this.currentSession.id));
         this.recentRecords = await this.attendanceService.getSessionRecords(this.currentSession.id);
       } else {
         this.allUsers = await this.userService.getAllUsers();
         const userStats = await this.userService.getUserStats();
-        this.stats = {
+        this.stats = this.normalizeStats({
           totalUsers: userStats.total,
           checkedIn: 0,
           lateCount: 0,
           absentCount: userStats.total
-        };
+        });
         this.recentRecords = [];
       }
+      this.attendanceRate = this.calculateAttendanceRate(this.stats);
       this.filterUsers();
       this.syncActivityFeed();
     } catch (error) {
       Logger.error('加载首页数据失败: %{public}s', JSON.stringify(error));
     }
+  }
+
+  private normalizeStats(stats: AttendanceStats): AttendanceStats {
+    const totalUsers = stats.totalUsers > 0 ? Math.floor(stats.totalUsers) : 0;
+    const checkedInRaw = stats.checkedIn > 0 ? Math.floor(stats.checkedIn) : 0;
+    const checkedIn = Math.min(checkedInRaw, totalUsers);
+    const lateCountRaw = stats.lateCount > 0 ? Math.floor(stats.lateCount) : 0;
+    const lateCount = Math.min(lateCountRaw, checkedIn);
+    const absentCount = Math.max(0, totalUsers - checkedIn);
+    return {
+      totalUsers: totalUsers,
+      checkedIn: checkedIn,
+      lateCount: lateCount,
+      absentCount: absentCount
+    };
+  }
+
+  private calculateAttendanceRate(stats: AttendanceStats): number {
+    if (!(stats.totalUsers > 0) || !(stats.checkedIn > 0)) {
+      return 0;
+    }
+    return Math.min(stats.checkedIn / stats.totalUsers, 1);
   }
 
   private filterUsers(): void {
@@ -368,10 +392,10 @@ struct HomePage {
       // 触发分数滚动动画
       this.displayScore = 0;
       this.resultOpacity = 0;
-      animateTo({ duration: 300, curve: Curve.EaseOut }, () => {
+      this.getUIContext().animateTo({ duration: 300, curve: Curve.EaseOut }, () => {
         this.resultOpacity = 1;
       });
-      animateTo({ duration: 800, curve: Curve.EaseOut }, () => {
+      this.getUIContext().animateTo({ duration: 800, curve: Curve.EaseOut }, () => {
         this.displayScore = this.lastScore;
       });
       this.appendCheckInActivity(result.success, result.message, result.compareScore ?? 0);
@@ -397,7 +421,7 @@ struct HomePage {
     this.showResult = true;
     this.resultOpacity = 0;
     this.appendCheckInActivity(false, message, this.lastScore);
-    animateTo({ duration: 300, curve: Curve.EaseOut }, () => {
+    this.getUIContext().animateTo({ duration: 300, curve: Curve.EaseOut }, () => {
       this.resultOpacity = 1;
     });
     this.isChecking = false;
@@ -607,12 +631,10 @@ struct HomePage {
       this.statRow('未签到', () => this.stats.absentCount, '#FF3B30')
       Divider().color('#E5E5E5').margin({ top: 6, bottom: 12 })
       CircleProgress({
-        value: this.stats.totalUsers > 0
-          ? this.stats.checkedIn / this.stats.totalUsers
-          : 0,
+        value: this.attendanceRate,
         circleSize: 90,
         strokeWidth: 9,
-        color: '#007DFF',
+        color: Colors.success,
         label: '出勤率'
       })
         .width('100%')
@@ -878,9 +900,9 @@ struct HomePage {
     .onTouch((event: TouchEvent) => {
       if (this.selectedUserId < 0 || this.isChecking) return;
       if (event.type === TouchType.Down) {
-        animateTo({ duration: 80 }, () => { this.buttonScale = 0.96; });
+        this.getUIContext().animateTo({ duration: 80 }, () => { this.buttonScale = 0.96; });
       } else {
-        animateTo({ duration: 150, curve: Curve.EaseOut }, () => { this.buttonScale = 1; });
+        this.getUIContext().animateTo({ duration: 150, curve: Curve.EaseOut }, () => { this.buttonScale = 1; });
       }
     })
     .margin({ top: 10 })

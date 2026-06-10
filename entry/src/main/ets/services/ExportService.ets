@@ -3,6 +3,13 @@ import { AttendanceRecord, AttendanceSession, CheckInStatus } from '../models/At
 import { UserModel } from '../models/UserModel';
 import { DateUtils } from '../utils/DateUtils';
 
+export interface AttendanceAbsentRow {
+  sessionId: number;
+  userName: string;
+  studentNo: string;
+  className: string;
+}
+
 export class ExportService {
   private escapeCsv(value: string): string {
     return `"${value.replace(/"/g, '""')}"`;
@@ -18,7 +25,8 @@ export class ExportService {
     context: Context,
     records: AttendanceRecord[],
     sessions: AttendanceSession[],
-    users: UserModel[]
+    users: UserModel[],
+    absentRows: AttendanceAbsentRow[] = []
   ): Promise<string> {
     const lines: string[] = [
       ['姓名', '学号', '班级', '课程', '场次', '签到日期', '签到时间', '匹配度', '活体检测', '状态']
@@ -40,6 +48,22 @@ export class ExportService {
         `${(record.compareScore * 100).toFixed(1)}%`,
         record.livenessPassed ? '通过' : '未启用',
         this.statusText(record.status)
+      ];
+      lines.push(row.map((value: string) => this.escapeCsv(value)).join(','));
+    });
+    absentRows.forEach((absent: AttendanceAbsentRow) => {
+      const session = sessions.find((item: AttendanceSession) => item.id === absent.sessionId);
+      const row = [
+        absent.userName,
+        absent.studentNo,
+        absent.className,
+        session?.courseName ?? '历史课程',
+        session?.title ?? '',
+        session ? DateUtils.formatDate(session.startTime) : '',
+        '',
+        '',
+        '未检测',
+        '缺勤'
       ];
       lines.push(row.map((value: string) => this.escapeCsv(value)).join(','));
     });

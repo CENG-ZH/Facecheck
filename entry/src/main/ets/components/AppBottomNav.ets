@@ -1,4 +1,5 @@
 import { Logger } from '../utils/Logger';
+import { Colors } from '../utils/DesignTokens';
 
 @Component
 export struct AppBottomNav {
@@ -16,8 +17,8 @@ export struct AppBottomNav {
     .height(58)
     .padding({ left: 8, right: 8 })
     .justifyContent(FlexAlign.SpaceAround)
-    .backgroundColor('#FFFFFF')
-    .border({ width: { top: 0.5 }, color: '#E5E5E5' })
+    .backgroundColor(Colors.card)
+    .border({ width: { top: 0.5 }, color: Colors.border })
   }
 
   @Builder
@@ -26,7 +27,7 @@ export struct AppBottomNav {
       Image(icon)
         .width(21)
         .height(21)
-        .fillColor(this.active === key ? '#007DFF' : '#989A9C')
+        .fillColor(this.active === key ? Colors.primary : Colors.textTertiary)
         .scale({
           x: this.active === key ? 1.15 : 1.0,
           y: this.active === key ? 1.15 : 1.0
@@ -37,7 +38,7 @@ export struct AppBottomNav {
         })
       Text(label)
         .fontSize(11)
-        .fontColor(this.active === key ? '#007DFF' : '#989A9C')
+        .fontColor(this.active === key ? Colors.primary : Colors.textTertiary)
         .fontWeight(this.active === key ? FontWeight.Medium : FontWeight.Normal)
         .margin({ top: 3 })
     }

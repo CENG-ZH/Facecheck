@@ -1,6 +1,6 @@
 /**
- * CircleProgress.ets — 圆环进度条组件
- * 用 Text + 背景/前景双层模拟圆环进度效果，兼容 SDK 6.x 预览模式。
+ * CircleProgress.ets - 出勤率圆环
+ * value 使用 0.0~1.0 的比例值，组件内部统一处理非法值并转换为百分比。
  */
 import { Colors } from '../utils/DesignTokens';
 
@@ -9,33 +9,72 @@ export struct CircleProgress {
   @Prop value: number = 0;
   @Prop circleSize: number = 80;
   @Prop strokeWidth: number = 8;
-  @Prop color: string = Colors.primary;
+  @Prop color: string = Colors.success;
   @Prop label: string = '';
   @Prop showPercent: boolean = true;
 
-  private get diameter(): number {
-    return this.circleSize;
+  private getSafeValue(): number {
+    if (!(this.value > 0)) {
+      return 0;
+    }
+    if (this.value >= 1) {
+      return 1;
+    }
+    return this.value;
   }
 
-  private get radius(): number {
-    return (this.circleSize - this.strokeWidth) / 2;
+  private getPercent(): number {
+    return Math.round(this.getSafeValue() * 100);
   }
 
   build() {
     Column() {
       Stack({ alignContent: Alignment.Center }) {
-        Text('')
+        // 灰色底环始终渲染，保证 0% 时仍有完整的圆环轮廓。
+        Progress({
+          value: 100,
+          total: 100,
+          type: ProgressType.Ring
+        })
           .width(this.circleSize)
           .height(this.circleSize)
-          .border({
-            width: this.strokeWidth,
-            color: Colors.border,
-            radius: this.radius
+          .color(Colors.border)
+          .style({
+            strokeWidth: this.strokeWidth,
+            shadow: false,
+            status: ProgressStatus.PROGRESSING,
+            enableScanEffect: false,
+            enableSmoothEffect: false
           })
-        Text(`${Math.round(this.value * 100)}%`)
-          .fontSize(Math.round(this.circleSize * 0.22))
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.color)
+
+        // 绿色进度环始终保留在组件树中，数值变化时才能产生连续动画。
+        Progress({
+          value: 0,
+          total: 100,
+          type: ProgressType.Ring
+        })
+          .value(this.getPercent())
+          .width(this.circleSize)
+          .height(this.circleSize)
+          .color(this.color)
+          .style({
+            strokeWidth: this.strokeWidth,
+            shadow: false,
+            status: ProgressStatus.PROGRESSING,
+            enableScanEffect: false,
+            enableSmoothEffect: true
+          })
+          .animation({
+            duration: 500,
+            curve: Curve.EaseOut
+          })
+
+        if (this.showPercent) {
+          Text(`${this.getPercent()}%`)
+            .fontSize(Math.round(this.circleSize * 0.22))
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getPercent() > 0 ? this.color : Colors.textSecondary)
+        }
       }
       .width(this.circleSize)
       .height(this.circleSize)

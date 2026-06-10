@@ -39,7 +39,7 @@ struct UserListPage {
     await this.loadUsers();
     // 触发列表入场动画
     setTimeout(() => {
-      animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
+      this.getUIContext().animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
         this.userListOpacity = 1;
         this.userListTranslateY = 0;
       });
