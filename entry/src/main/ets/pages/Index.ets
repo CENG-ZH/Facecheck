@@ -28,7 +28,7 @@ interface CheckInActivity {
   id: string;
   userName: string;
   time: number;
-  success: boolean;
+  status: CheckInStatus;
   statusText: string;
   message: string;
   score: number;
@@ -194,12 +194,14 @@ struct HomePage {
   private getStatusText(status: CheckInStatus): string {
     if (status === CheckInStatus.NORMAL) return '正常';
     if (status === CheckInStatus.LATE) return '迟到';
+    if (status === CheckInStatus.ABSENT) return '缺勤';
     return '失败';
   }
 
   private getStatusColor(status: CheckInStatus): string {
     if (status === CheckInStatus.NORMAL) return Colors.success;
     if (status === CheckInStatus.LATE) return Colors.warning;
+    if (status === CheckInStatus.ABSENT) return Colors.danger;
     return Colors.danger;
   }
 
@@ -214,7 +216,7 @@ struct HomePage {
         id: `record-${record.id}`,
         userName: this.getUserNameById(record.userId),
         time: record.checkInTime,
-        success: record.status !== CheckInStatus.FAILED,
+        status: record.status,
         statusText: this.getStatusText(record.status),
         message: record.status === CheckInStatus.LATE ? '签到成功，状态为迟到' : '人脸验证通过',
         score: record.compareScore
@@ -223,7 +225,7 @@ struct HomePage {
     });
   }
 
-  private appendCheckInActivity(success: boolean, message: string, score: number = 0): void {
+  private appendCheckInActivity(status: CheckInStatus, message: string, score: number = 0): void {
     if (this.activeAttemptRecorded) {
       return;
     }
@@ -233,12 +235,30 @@ struct HomePage {
       id: `attempt-${Date.now()}-${this.activitySequence}`,
       userName: this.selectedUserName || '未选择人员',
       time: Date.now(),
-      success: success,
-      statusText: success ? '通过' : '未通过',
+      status: status,
+      statusText: status === CheckInStatus.NORMAL ? '正常' :
+                 status === CheckInStatus.LATE ? '迟到' : '未通过',
       message: message,
       score: score
     };
     this.checkInActivities = [activity, ...this.checkInActivities].slice(0, 40);
+  }
+
+  private getActivityDotColor(status: CheckInStatus): string {
+    if (status === CheckInStatus.NORMAL) return Colors.success;
+    if (status === CheckInStatus.LATE) return Colors.warning;
+    return Colors.danger;
+  }
+
+  private getActivityDotBgColor(status: CheckInStatus): string {
+    if (status === CheckInStatus.NORMAL) return Colors.successBgAlt;
+    if (status === CheckInStatus.LATE) return Colors.warningBg;
+    return Colors.dangerBg;
+  }
+
+  private getActivityMessageColor(status: CheckInStatus): string {
+    if (status === CheckInStatus.NORMAL || status === CheckInStatus.LATE) return Colors.textSecondary;
+    return Colors.dangerDark;
   }
 
   private getActivityTickerText(): string {
@@ -398,7 +418,7 @@ struct HomePage {
       this.getUIContext().animateTo({ duration: 800, curve: Curve.EaseOut }, () => {
         this.displayScore = this.lastScore;
       });
-      this.appendCheckInActivity(result.success, result.message, result.compareScore ?? 0);
+      this.appendCheckInActivity(result.record?.status ?? CheckInStatus.FAILED, result.message, result.compareScore ?? 0);
       if (result.success) {
         await this.loadData();
         this.selectedUserId = -1;
@@ -420,7 +440,7 @@ struct HomePage {
     this.checkResultMessage = message;
     this.showResult = true;
     this.resultOpacity = 0;
-    this.appendCheckInActivity(false, message, this.lastScore);
+    this.appendCheckInActivity(CheckInStatus.FAILED, message, this.lastScore);
     this.getUIContext().animateTo({ duration: 300, curve: Curve.EaseOut }, () => {
       this.resultOpacity = 1;
     });
@@ -574,7 +594,7 @@ struct HomePage {
               .fontColor(Colors.danger)
               .backgroundColor(Colors.dangerBg)
               .borderRadius(6)
-              .shadow({ radius: 5, color: '#20F53B3F', offsetY: 2 })
+              .shadow(Shadows.danger)
               .onClick(() => this.endCurrentSession())
           }
         }
@@ -930,8 +950,8 @@ struct HomePage {
         Circle()
           .width(7)
           .height(7)
-          .fill(this.checkInActivities.length > 0 && !this.checkInActivities[0].success
-            ? Colors.danger : Colors.success)
+          .fill(this.checkInActivities.length > 0
+            ? this.getActivityDotColor(this.checkInActivities[0].status) : Colors.success)
         Text('实时')
           .fontSize(11)
           .fontWeight(FontWeight.Bold)
@@ -943,16 +963,16 @@ struct HomePage {
         .layoutWeight(1)
         .height(30)
         .fontSize(12)
-        .fontColor(this.checkInActivities.length > 0 && !this.checkInActivities[0].success
-          ? Colors.dangerDark : Colors.textSecondary)
+        .fontColor(this.checkInActivities.length > 0
+          ? this.getActivityMessageColor(this.checkInActivities[0].status) : Colors.textSecondary)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .maxLines(1)
     }
     .width('100%')
     .height(38)
     .padding({ left: 10, right: 10 })
-    .backgroundColor(this.checkInActivities.length > 0 && !this.checkInActivities[0].success
-      ? Colors.dangerBg : Colors.successBgAlt)
+    .backgroundColor(this.checkInActivities.length > 0
+      ? this.getActivityDotBgColor(this.checkInActivities[0].status) : Colors.successBgAlt)
     .borderRadius(6)
     .margin({ bottom: 6 })
   }
@@ -982,7 +1002,7 @@ struct HomePage {
                   Circle()
                     .width(7)
                     .height(7)
-                    .fill(activity.success ? Colors.success : Colors.danger)
+                    .fill(this.getActivityDotColor(activity.status))
                     .margin({ right: dense ? 7 : 9 })
                   Column() {
                     Text(activity.userName)
@@ -996,14 +1016,16 @@ struct HomePage {
                       .margin({ top: 3 })
                     Text(activity.message)
                       .fontSize(dense ? 10 : 11)
-                      .fontColor(activity.success ? Colors.textSecondary : Colors.dangerDark)
+                      .fontColor(this.getActivityMessageColor(activity.status))
                       .maxLines(2)
                       .margin({ top: 3 })
                   }
                   .layoutWeight(1)
                   .alignItems(HorizontalAlign.Start)
                   StatusPill({
-                    status: activity.success ? StatusType.NORMAL : StatusType.FAILED,
+                    status: activity.status === CheckInStatus.NORMAL ? StatusType.NORMAL :
+                            activity.status === CheckInStatus.LATE ? StatusType.LATE :
+                            activity.status === CheckInStatus.ABSENT ? StatusType.ABSENT : StatusType.FAILED,
                     text: activity.statusText
                   })
                 }
@@ -1018,7 +1040,7 @@ struct HomePage {
         .layoutWeight(1)
         .width('100%')
         .scrollBar(BarState.On)
-        .scrollBarColor('#AAB4C0')
+        .scrollBarColor(Colors.scrollbar)
         .scrollBarWidth(4)
       }
     }

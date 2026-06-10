@@ -18,6 +18,7 @@ export class ExportService {
   private statusText(status: CheckInStatus): string {
     if (status === CheckInStatus.NORMAL) return '正常';
     if (status === CheckInStatus.LATE) return '迟到';
+    if (status === CheckInStatus.ABSENT) return '缺勤';
     return '失败';
   }
 
@@ -35,6 +36,9 @@ export class ExportService {
     ];
 
     records.forEach((record: AttendanceRecord) => {
+      if (record.status === CheckInStatus.ABSENT) {
+        return; // 缺勤记录走 absentRows 逻辑，避免重复
+      }
       const user = users.find((item: UserModel) => item.id === record.userId);
       const session = sessions.find((item: AttendanceSession) => item.id === record.sessionId);
       const row = [

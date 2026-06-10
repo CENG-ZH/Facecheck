@@ -38,6 +38,9 @@ export class Colors {
   static readonly warningBg: string = '#FFF7E6';      // 迟到状态浅背景
   static readonly dangerBg: string = '#FFF1F0';       // 失败状态浅背景
   static readonly dangerDark: string = '#C62828';     // 深红错误文字
+
+  // 滚动条
+  static readonly scrollbar: string = '#AAB4C0';      // 滚动条颜色
 }
 
 export class Shadows {
@@ -55,6 +58,11 @@ export class Shadows {
     radius: 20,
     color: '#30007DFF',
     offsetY: 6
+  };
+  static readonly danger: ShadowOptions = {
+    radius: 5,
+    color: '#20F53B3F',
+    offsetY: 2
   };
 }
 

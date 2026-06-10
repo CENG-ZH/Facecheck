@@ -97,12 +97,14 @@ struct RecordListPage {
   private getStatusText(status: CheckInStatus): string {
     if (status === CheckInStatus.NORMAL) return '正常';
     if (status === CheckInStatus.LATE) return '迟到';
+    if (status === CheckInStatus.ABSENT) return '缺勤';
     return '失败';
   }
 
   private getStatusColor(status: CheckInStatus): string {
     if (status === CheckInStatus.NORMAL) return Colors.success;
     if (status === CheckInStatus.LATE) return Colors.warning;
+    if (status === CheckInStatus.ABSENT) return Colors.danger;
     return Colors.danger;
   }
 
@@ -150,46 +152,31 @@ struct RecordListPage {
   }
 
   private getAbsentCount(): number {
-    return this.getFilteredAbsentRows().length;
+    return this.getFilteredRecords().filter((record: AttendanceRecord) =>
+      record.status === CheckInStatus.ABSENT
+    ).length;
   }
 
+  /**
+   * 从已结束场次的 ABSENT 记录中提取缺勤行，供 CSV 导出使用。
+   * 缺勤记录由 endSession() 在结束场次时自动生成。
+   */
   private getFilteredAbsentRows(): AttendanceAbsentRow[] {
-    const keyword = this.searchKeyword.trim().toLowerCase();
-    const date = this.dateKeyword.trim();
-    const absentRows: AttendanceAbsentRow[] = [];
-    this.expectedMembers.forEach((item: SessionMemberSnapshot) => {
-      if (this.selectedSessionId > 0 && item.sessionId !== this.selectedSessionId) {
-        return;
-      }
-      const session = this.getSession(item.sessionId);
-      if (date !== '' && (!session || !DateUtils.formatDate(session.startTime).includes(date))) {
-        return;
-      }
-      const matchesKeyword = keyword === '' ||
-        item.user.name.toLowerCase().includes(keyword) ||
-        item.user.studentNo.toLowerCase().includes(keyword);
-      const matchesClass = this.selectedClassName === '' ||
-        item.user.className === this.selectedClassName;
-      if (!matchesKeyword || !matchesClass) {
-        return;
-      }
-      const hasCheckedIn = this.records.some((record: AttendanceRecord) =>
-        record.sessionId === item.sessionId && record.userId === item.user.id
-      );
-      if (!hasCheckedIn) {
-        absentRows.push({
-          sessionId: item.sessionId,
-          userName: item.user.name,
-          studentNo: item.user.studentNo,
-          className: item.user.className
-        });
-      }
-    });
-    return absentRows;
+    return this.getFilteredRecords()
+      .filter((record: AttendanceRecord) => record.status === CheckInStatus.ABSENT)
+      .map((record: AttendanceRecord) => {
+        const user = this.getRecordUser(record);
+        return {
+          sessionId: record.sessionId,
+          userName: user?.name ?? '历史用户',
+          studentNo: user?.studentNo ?? '',
+          className: user?.className ?? ''
+        } as AttendanceAbsentRow;
+      });
   }
 
   private getReportRowCount(): number {
-    return this.getFilteredRecords().length + this.getFilteredAbsentRows().length;
+    return this.getFilteredRecords().length;
   }
 
   private async exportRecords(): Promise<void> {
@@ -442,9 +429,11 @@ struct RecordListPage {
                 .alignItems(HorizontalAlign.Start)
                 StatusPill({
                   status: record.status === CheckInStatus.NORMAL ? StatusType.NORMAL :
-                          record.status === CheckInStatus.LATE ? StatusType.LATE : StatusType.FAILED,
+                          record.status === CheckInStatus.LATE ? StatusType.LATE :
+                          record.status === CheckInStatus.ABSENT ? StatusType.ABSENT : StatusType.FAILED,
                   text: record.status === CheckInStatus.NORMAL ? '正常' :
-                        record.status === CheckInStatus.LATE ? '迟到' : '失败'
+                        record.status === CheckInStatus.LATE ? '迟到' :
+                        record.status === CheckInStatus.ABSENT ? '缺勤' : '失败'
                 })
               }
               Row() {
@@ -452,14 +441,24 @@ struct RecordListPage {
                   .fontSize(12)
                   .fontColor(Colors.primary)
                   .layoutWeight(1)
-                Text(`${DateUtils.formatDate(record.checkInTime)} ${DateUtils.formatTime(record.checkInTime)}`)
-                  .fontSize(11)
-                  .fontColor(Colors.textTertiary)
-                Text(`${(record.compareScore * 100).toFixed(0)}%`)
-                  .fontSize(12)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor(Colors.textPrimary)
-                  .margin({ left: 10 })
+                if (record.status === CheckInStatus.ABSENT) {
+                  Text('未签到')
+                    .fontSize(11)
+                    .fontColor(Colors.textTertiary)
+                  Text('—')
+                    .fontSize(12)
+                    .fontColor(Colors.textTertiary)
+                    .margin({ left: 10 })
+                } else {
+                  Text(`${DateUtils.formatDate(record.checkInTime)} ${DateUtils.formatTime(record.checkInTime)}`)
+                    .fontSize(11)
+                    .fontColor(Colors.textTertiary)
+                  Text(`${(record.compareScore * 100).toFixed(0)}%`)
+                    .fontSize(12)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor(Colors.textPrimary)
+                    .margin({ left: 10 })
+                }
               }
               .width('100%')
               .margin({ top: 11 })
@@ -512,17 +511,24 @@ struct RecordListPage {
                 3,
                 Colors.textPrimary
               )
-              this.tableText(
-                `${DateUtils.formatDate(record.checkInTime)}\n${DateUtils.formatTime(record.checkInTime)}`,
-                2,
-                Colors.textTertiary
-              )
-              this.tableText(`${(record.compareScore * 100).toFixed(0)}%`, 1, Colors.primary)
+              if (record.status === CheckInStatus.ABSENT) {
+                this.tableText('未签到', 2, Colors.textTertiary)
+                this.tableText('—', 1, Colors.textTertiary)
+              } else {
+                this.tableText(
+                  `${DateUtils.formatDate(record.checkInTime)}\n${DateUtils.formatTime(record.checkInTime)}`,
+                  2,
+                  Colors.textTertiary
+                )
+                this.tableText(`${(record.compareScore * 100).toFixed(0)}%`, 1, Colors.primary)
+              }
               StatusPill({
                 status: record.status === CheckInStatus.NORMAL ? StatusType.NORMAL :
-                        record.status === CheckInStatus.LATE ? StatusType.LATE : StatusType.FAILED,
+                        record.status === CheckInStatus.LATE ? StatusType.LATE :
+                        record.status === CheckInStatus.ABSENT ? StatusType.ABSENT : StatusType.FAILED,
                 text: record.status === CheckInStatus.NORMAL ? '正常' :
-                      record.status === CheckInStatus.LATE ? '迟到' : '失败'
+                      record.status === CheckInStatus.LATE ? '迟到' :
+                      record.status === CheckInStatus.ABSENT ? '缺勤' : '失败'
               })
             }
             .width('100%')

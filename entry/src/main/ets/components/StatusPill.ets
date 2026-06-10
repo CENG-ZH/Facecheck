@@ -7,7 +7,8 @@ import { Colors } from '../utils/DesignTokens';
 export enum StatusType {
   NORMAL = 'normal',
   LATE = 'late',
-  FAILED = 'failed'
+  FAILED = 'failed',
+  ABSENT = 'absent'
 }
 
 @Component
@@ -18,13 +19,15 @@ export struct StatusPill {
   private getBgColor(): string {
     if (this.status === StatusType.NORMAL) return Colors.successBg;
     if (this.status === StatusType.LATE) return Colors.warningBg;
-    return Colors.dangerBg;
+    if (this.status === StatusType.FAILED) return Colors.dangerBg;
+    return Colors.dangerBg; // ABSENT — 红色（同失败）
   }
 
   private getTextColor(): string {
     if (this.status === StatusType.NORMAL) return Colors.success;
     if (this.status === StatusType.LATE) return Colors.warning;
-    return Colors.danger;
+    if (this.status === StatusType.FAILED) return Colors.danger;
+    return Colors.danger; // ABSENT — 红色（同失败）
   }
 
   build() {
