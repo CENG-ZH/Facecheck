@@ -54,7 +54,8 @@ export interface AttendanceRecordDraft {
 export enum CheckInStatus {
   NORMAL = 0,
   LATE = 1,
-  FAILED = 2
+  FAILED = 2,
+  ABSENT = 3   // 缺勤——场次结束时自动生成
 }
 
 /**

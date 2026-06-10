@@ -20,6 +20,7 @@ import { Logger } from '../utils/Logger';
 export class FaceVisionAdapter {
   private static isDetectorInitialized: boolean = false;
   private static isComparatorInitialized: boolean = false;
+  private static initPromise: Promise<void> | null = null;
 
   /**
    * 初始化人脸检测引擎
@@ -61,8 +62,14 @@ export class FaceVisionAdapter {
    * 初始化所有引擎（检测 + 比对）
    */
   static async initAll(): Promise<void> {
-    await FaceVisionAdapter.initDetector();
-    await FaceVisionAdapter.initComparator();
+    if (FaceVisionAdapter.initPromise !== null) {
+      return FaceVisionAdapter.initPromise;
+    }
+    FaceVisionAdapter.initPromise = (async () => {
+      await FaceVisionAdapter.initDetector();
+      await FaceVisionAdapter.initComparator();
+    })();
+    return FaceVisionAdapter.initPromise;
   }
 
   /**
@@ -186,6 +193,17 @@ export class FaceVisionAdapter {
         score: 0,
         message: '人脸比对失败，请重试'
       };
+    } finally {
+      try {
+        registeredPixelMap.release();
+      } catch (releaseError) {
+        Logger.warn('释放注册照片 PixelMap 失败: %{public}s', JSON.stringify(releaseError));
+      }
+      try {
+        capturedPixelMap.release();
+      } catch (releaseError) {
+        Logger.warn('释放现场照片 PixelMap 失败: %{public}s', JSON.stringify(releaseError));
+      }
     }
   }
 

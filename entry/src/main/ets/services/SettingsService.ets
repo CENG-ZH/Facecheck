@@ -136,8 +136,10 @@ export class SettingsService {
    * 设置人脸匹配阈值
    */
   async setFaceThreshold(value: number): Promise<void> {
-    this.cachedSettings.faceThreshold = value;
-    await this.save(KEY_FACE_THRESHOLD, value);
+    // 阈值范围: 0-100，超出范围自动截断
+    const clamped = Math.max(0, Math.min(100, Math.round(value)));
+    this.cachedSettings.faceThreshold = clamped;
+    await this.save(KEY_FACE_THRESHOLD, clamped);
   }
 
   /**
@@ -152,8 +154,10 @@ export class SettingsService {
    * 设置迟到时间
    */
   async setLateMinutes(value: number): Promise<void> {
-    this.cachedSettings.lateMinutes = value;
-    await this.save(KEY_LATE_MINUTES, value);
+    // 迟到时间范围: 1-1440 分钟，超出范围自动截断
+    const clamped = Math.max(1, Math.min(1440, Math.round(value)));
+    this.cachedSettings.lateMinutes = clamped;
+    await this.save(KEY_LATE_MINUTES, clamped);
   }
 
   /**

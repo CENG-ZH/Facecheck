@@ -5,6 +5,9 @@ import { OrganizationService } from '../services/OrganizationService';
 import { UserModel, UserFormData } from '../models/UserModel';
 import { AdminClass, Course } from '../models/OrganizationModel';
 import { Logger } from '../utils/Logger';
+import { AnimatedCard } from '../components/AnimatedCard';
+import { FaceEnrollButton } from '../components/FaceEnrollButton';
+import { Shadows, Radius, Colors } from '../utils/DesignTokens';
 
 @Entry
 @Component
@@ -20,6 +23,8 @@ struct UserListPage {
   @State formName: string = '';
   @State formClassId: number = 0;
   @State formCourseIds: number[] = [];
+  @State userListOpacity: number = 0;
+  @State userListTranslateY: number = 0;
 
   private userService: UserService = new UserService();
   private organizationService: OrganizationService = new OrganizationService();
@@ -33,6 +38,13 @@ struct UserListPage {
     });
     await this.loadReferenceData();
     await this.loadUsers();
+    // 触发列表入场动画
+    setTimeout(() => {
+      this.getUIContext().animateTo({ duration: 400, curve: Curve.EaseOut }, () => {
+        this.userListOpacity = 1;
+        this.userListTranslateY = 0;
+      });
+    }, 100);
   }
 
   onPageShow(): void {
@@ -139,7 +151,7 @@ struct UserListPage {
       primaryButton: { value: '取消', action: () => {} },
       secondaryButton: {
         value: '归档',
-        fontColor: '#FF3B30',
+        fontColor: Colors.danger,
         action: () => {
           this.userService.deleteUser(user.id).then(() => {
             this.showToast('人员已归档');
@@ -169,7 +181,7 @@ struct UserListPage {
           TextInput({ placeholder: '搜索姓名或学号', text: this.searchKeyword })
             .layoutWeight(1)
             .height(40)
-            .backgroundColor('#FFFFFF')
+            .backgroundColor(Colors.card)
             .borderRadius(6)
             .onChange((value: string) => {
               this.searchKeyword = value;
@@ -184,10 +196,10 @@ struct UserListPage {
             Text('暂无有效人员')
               .fontSize(16)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#182431')
+              .fontColor(Colors.textPrimary)
             Text('点击右上角添加人员')
               .fontSize(13)
-              .fontColor('#989A9C')
+              .fontColor(Colors.textTertiary)
               .margin({ top: 6 })
           }
           .layoutWeight(1)
@@ -195,23 +207,27 @@ struct UserListPage {
           .justifyContent(FlexAlign.Center)
         } else {
           List() {
-            ForEach(this.users, (user: UserModel) => {
-              ListItem() {
-                this.userItem(user)
-              }
-            }, (user: UserModel) => `${user.id}_${user.updatedAt}`)
+      ForEach(this.users, (user: UserModel, index: number) => {
+        ListItem() {
+          AnimatedCard({ delay: index * 40 }) {
+            this.userItem(user)
           }
+        }
+      }, (user: UserModel) => `${user.id}_${user.updatedAt}`)
+          }
+          .opacity(this.userListOpacity)
+          .translate({ y: this.userListTranslateY })
           .layoutWeight(1)
           .width('100%')
           .padding({ left: 14, right: 14, bottom: 10 })
-          .divider({ strokeWidth: 8, color: '#F1F3F5' })
+          .divider({ strokeWidth: 8, color: Colors.borderLight })
         }
 
         AppBottomNav({ active: 'users' })
       }
       .width('100%')
       .height('100%')
-      .backgroundColor('#F1F3F5')
+      .backgroundColor(Colors.bg)
 
       if (this.showFormDialog) {
         this.formDialog()
@@ -228,38 +244,40 @@ struct UserListPage {
         Text('人员管理')
           .fontSize(21)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor(Colors.textPrimary)
         Text(`${this.users.length} 名有效人员`)
           .fontSize(12)
-          .fontColor('#989A9C')
+          .fontColor(Colors.textTertiary)
           .margin({ top: 2 })
       }
       .alignItems(HorizontalAlign.Start)
       Blank()
-      Button() {
-        Row() {
-          Image($r('app.media.icon_add'))
-            .width(17)
-            .height(17)
-            .fillColor('#FFFFFF')
-          Text('添加')
-            .fontSize(14)
-            .fontColor('#FFFFFF')
-            .margin({ left: 5 })
+      FaceEnrollButton() {
+        Button() {
+          Row() {
+            Image($r('app.media.icon_add'))
+              .width(17)
+              .height(17)
+              .fillColor(Colors.white)
+            Text('添加')
+              .fontSize(14)
+              .fontColor(Colors.white)
+              .margin({ left: 5 })
+          }
         }
+        .height(38)
+        .padding({ left: 13, right: 13 })
+        .type(ButtonType.Normal)
+        .borderRadius(6)
+        .backgroundColor(Colors.primary)
+        .onClick(() => this.openAddDialog())
       }
-      .height(38)
-      .padding({ left: 13, right: 13 })
-      .type(ButtonType.Normal)
-      .borderRadius(6)
-      .backgroundColor('#007DFF')
-      .onClick(() => this.openAddDialog())
     }
     .width('100%')
     .height(64)
     .padding({ left: 18, right: 18 })
-    .backgroundColor('#FFFFFF')
-    .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+    .backgroundColor(Colors.card)
+    .border({ width: { bottom: 0.5 }, color: Colors.border })
   }
 
   @Builder
@@ -271,9 +289,9 @@ struct UserListPage {
           .height(42)
           .fontSize(17)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#FFFFFF')
+          .fontColor(Colors.white)
           .textAlign(TextAlign.Center)
-          .backgroundColor('#007DFF')
+          .backgroundColor(Colors.primary)
           .borderRadius(21)
           .margin({ right: 12 })
         Column() {
@@ -281,18 +299,18 @@ struct UserListPage {
             Text(user.name)
               .fontSize(16)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#182431')
+              .fontColor(Colors.textPrimary)
             Text(user.faceEnrolled ? '已录入人脸' : '未录入人脸')
               .fontSize(10)
-              .fontColor(user.faceEnrolled ? '#34C759' : '#FF3B30')
+              .fontColor(user.faceEnrolled ? Colors.success : Colors.danger)
               .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-              .backgroundColor(user.faceEnrolled ? '#EEFAF1' : '#FFF1F0')
+              .backgroundColor(user.faceEnrolled ? Colors.successBg : Colors.dangerBg)
               .borderRadius(4)
               .margin({ left: 8 })
           }
           Text(`${user.studentNo} · ${user.className}`)
             .fontSize(12)
-            .fontColor('#989A9C')
+            .fontColor(Colors.textTertiary)
             .margin({ top: 5 })
         }
         .layoutWeight(1)
@@ -307,7 +325,11 @@ struct UserListPage {
       if (this.compactMode) {
         Row() {
           Blank()
-          this.actionButtons(user)
+          Scroll() {
+            this.actionButtons(user)
+          }
+          .scrollable(ScrollDirection.Horizontal)
+          .scrollBar(BarState.Off)
         }
         .width('100%')
         .margin({ top: 12 })
@@ -315,8 +337,9 @@ struct UserListPage {
     }
     .width('100%')
     .padding(15)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    .backgroundColor(Colors.card)
+    .borderRadius(12)
+    .shadow(Shadows.card)
   }
 
   @Builder
@@ -325,23 +348,23 @@ struct UserListPage {
       Button('编辑')
         .height(32)
         .fontSize(12)
-        .fontColor('#007DFF')
-        .backgroundColor('#EAF4FF')
+        .fontColor(Colors.primary)
+        .backgroundColor(Colors.primaryBg)
         .borderRadius(6)
         .onClick(() => this.openEditDialog(user))
       Button(user.faceEnrolled ? '重录' : '录脸')
         .height(32)
         .fontSize(12)
-        .fontColor('#34C759')
-        .backgroundColor('#EEFAF1')
+        .fontColor(Colors.success)
+        .backgroundColor(Colors.successBg)
         .borderRadius(6)
         .margin({ left: 7 })
         .onClick(() => this.openFaceEnroll(user))
       Button('归档')
         .height(32)
         .fontSize(12)
-        .fontColor('#FF3B30')
-        .backgroundColor('#FFF1F0')
+        .fontColor(Colors.danger)
+        .backgroundColor(Colors.dangerBg)
         .borderRadius(6)
         .margin({ left: 7 })
         .onClick(() => this.confirmArchive(user))
@@ -361,7 +384,7 @@ struct UserListPage {
           Text(this.editingUser ? '编辑人员' : '添加人员')
             .fontSize(19)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#182431')
+            .fontColor(Colors.textPrimary)
             .alignSelf(ItemAlign.Start)
             .margin({ bottom: 16 })
           TextInput({ placeholder: '学号', text: this.formStudentNo })
@@ -376,7 +399,7 @@ struct UserListPage {
 
           Text('所属班级')
             .fontSize(13)
-            .fontColor('#182431')
+            .fontColor(Colors.textPrimary)
             .alignSelf(ItemAlign.Start)
             .margin({ top: 16, bottom: 6 })
           Column() {
@@ -384,17 +407,17 @@ struct UserListPage {
               Row() {
                 Text(item.name)
                   .fontSize(13)
-                  .fontColor('#182431')
+                  .fontColor(Colors.textPrimary)
                   .layoutWeight(1)
                 Circle()
                   .width(16)
                   .height(16)
-                  .fill(this.formClassId === item.id ? '#007DFF' : '#FFFFFF')
-                  .border({ width: 1.5, color: this.formClassId === item.id ? '#007DFF' : '#B8C1CC' })
+                  .fill(this.formClassId === item.id ? Colors.primary : Colors.card)
+                  .border({ width: 1.5, color: this.formClassId === item.id ? Colors.primary : Colors.disabled })
               }
               .width('100%')
               .padding({ top: 9, bottom: 9 })
-              .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+              .border({ width: { bottom: 0.5 }, color: Colors.border })
               .onClick(() => { this.formClassId = item.id; })
             }, (item: AdminClass) => item.id.toString())
           }
@@ -402,7 +425,7 @@ struct UserListPage {
 
           Text('选修课程')
             .fontSize(13)
-            .fontColor('#182431')
+            .fontColor(Colors.textPrimary)
             .alignSelf(ItemAlign.Start)
             .margin({ top: 16, bottom: 6 })
           Column() {
@@ -411,10 +434,10 @@ struct UserListPage {
                 Column() {
                   Text(course.name)
                     .fontSize(13)
-                    .fontColor('#182431')
+                    .fontColor(Colors.textPrimary)
                   Text(course.code)
                     .fontSize(11)
-                    .fontColor('#989A9C')
+                    .fontColor(Colors.textTertiary)
                     .margin({ top: 2 })
                 }
                 .layoutWeight(1)
@@ -425,27 +448,37 @@ struct UserListPage {
               }
               .width('100%')
               .padding({ top: 8, bottom: 8 })
-              .border({ width: { bottom: 0.5 }, color: '#E5E5E5' })
+              .border({ width: { bottom: 0.5 }, color: Colors.border })
             }, (course: Course) => course.id.toString())
           }
           .width('100%')
 
           Row() {
-            Button('取消')
-              .layoutWeight(1)
-              .height(42)
-              .fontColor('#182431')
-              .backgroundColor('#F1F3F5')
-              .borderRadius(6)
-              .margin({ right: 6 })
-              .onClick(() => { this.showFormDialog = false; })
-            Button('保存')
-              .layoutWeight(1)
-              .height(42)
-              .backgroundColor('#007DFF')
-              .borderRadius(6)
-              .margin({ left: 6 })
-              .onClick(() => this.saveUser())
+            Column() {
+              FaceEnrollButton() {
+                Button('取消')
+                  .width('100%')
+                  .height(42)
+                  .fontColor(Colors.textPrimary)
+                  .backgroundColor(Colors.borderLight)
+                  .borderRadius(6)
+                  .onClick(() => { this.showFormDialog = false; })
+              }
+            }
+            .layoutWeight(1)
+            .margin({ right: 6 })
+            Column() {
+              FaceEnrollButton() {
+                Button('保存')
+                  .width('100%')
+                  .height(42)
+                  .backgroundColor(Colors.primary)
+                  .borderRadius(6)
+                  .onClick(() => this.saveUser())
+              }
+            }
+            .layoutWeight(1)
+            .margin({ left: 6 })
           }
           .width('100%')
           .margin({ top: 18 })
@@ -455,8 +488,9 @@ struct UserListPage {
       }
       .width(this.compactMode ? '92%' : 460)
       .constraintSize({ maxHeight: '86%' })
-      .backgroundColor('#FFFFFF')
-      .borderRadius(8)
+      .backgroundColor(Colors.card)
+      .shadow(Shadows.card)
+      .borderRadius(Radius.card)
       .scrollBar(BarState.Auto)
     }
     .width('100%')

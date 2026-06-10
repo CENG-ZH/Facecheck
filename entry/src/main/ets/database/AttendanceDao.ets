@@ -130,6 +130,9 @@ export class AttendanceDao {
 
   /**
    * 获取某场次签到统计
+   *
+   * 注意：ABSENT 状态的记录不计入 checkedIn；
+   *       absentCount = totalUsers - checkedIn（始终保持一致）。
    */
   async getSessionStats(sessionId: number, totalUsers: number): Promise<AttendanceStats> {
     const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
@@ -141,8 +144,11 @@ export class AttendanceDao {
       let lateCount = 0;
 
       while (resultSet.goToNextRow()) {
+        const status = resultSet.getLong(resultSet.getColumnIndex('status')) as CheckInStatus;
+        if (status === CheckInStatus.ABSENT) {
+          continue; // 缺勤记录不计入 "已签到"
+        }
         checkedIn++;
-        const status = resultSet.getLong(resultSet.getColumnIndex('status'));
         if (status === CheckInStatus.LATE) {
           lateCount++;
         }

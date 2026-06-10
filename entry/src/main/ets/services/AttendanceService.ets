@@ -84,9 +84,35 @@ export class AttendanceService {
 
   /**
    * 结束场次
+   *
+   * 结束时会自动为未签到（包括签到失败）的成员生成缺勤记录，
+   * 确保 attendance_records 中该场次每人一条记录，方便 RecordListPage 统一展示。
    */
   async endSession(sessionId: number): Promise<void> {
-    await this.sessionDao.endSession(sessionId, Date.now());
+    // 1. 获取所有应到人员
+    const members = await this.sessionMemberDao.getMembers(sessionId);
+    // 2. 获取已有签到记录
+    const records = await this.attendanceDao.getBySessionId(sessionId);
+    // 3. 找出完全没有记录的人员（含签到失败也算有记录）
+    const recordedUserIds = new Set<number>();
+    records.forEach((r: AttendanceRecord) => recordedUserIds.add(r.userId));
+    const absentMembers = members.filter((m: UserModel) => !recordedUserIds.has(m.id));
+    // 4. 生成缺勤记录
+    const now = Date.now();
+    for (const member of absentMembers) {
+      const draft: AttendanceRecordDraft = {
+        sessionId: sessionId,
+        userId: member.id,
+        checkInTime: now,
+        compareScore: 0,
+        livenessPassed: false,
+        status: CheckInStatus.ABSENT,
+        capturedImagePath: ''
+      };
+      await this.attendanceDao.insert(draft);
+    }
+    // 5. 标记场次已结束
+    await this.sessionDao.endSession(sessionId, now);
   }
 
   /**
@@ -168,9 +194,7 @@ export class AttendanceService {
       onStage?.(3);
       Logger.info('签到服务: 开始加载注册照片并执行人脸比对');
       const compareResult = await FaceVisionAdapter.compare(registeredPixelMap, capturedPixelMap);
-
-      // 释放注册照片 PixelMap
-      registeredPixelMap.release();
+      // registeredPixelMap 由 FaceVisionAdapter.compare() finally 释放，无需手动处理
 
       // 6. 判断比对结果
       // 优先使用官方 isSamePerson 判断，同时记录分数供后续分析
