@@ -357,6 +357,14 @@ struct HomePage {
     this.currentLocationMessage = '';
   }
 
+  private openCreateSessionDialog(): void {
+    this.resetSessionLocationDraft();
+    const settingsService = SettingsService.getInstance();
+    this.sessionLocationEnabled = settingsService.isDefaultLocationCheckEnabled();
+    this.sessionRadiusMeters = settingsService.getDefaultLocationRadius();
+    this.showCreateSession = true;
+  }
+
   private async locateSessionPoint(): Promise<void> {
     if (this.isLocatingSessionPoint) {
       return;
@@ -370,7 +378,10 @@ struct HomePage {
     this.isLocatingSessionPoint = true;
     this.sessionLocationMessage = '正在获取当前 Pad 位置...';
     try {
-      const result = await LocationAdapter.getCurrentLocation(hostContext);
+      const result = await LocationAdapter.getCurrentLocation(
+        hostContext,
+        SettingsService.getInstance().getLocationTimeoutMs()
+      );
       if (!result.success || !result.location) {
         this.sessionLocationMessage = result.message;
         this.showToast(result.message, 2600);
@@ -407,7 +418,10 @@ struct HomePage {
     this.currentStep = 0;
     this.stepText = '校验签到地点';
     this.currentLocationMessage = '正在校验当前 Pad 位置...';
-    const fetchResult = await LocationAdapter.getCurrentLocation(context);
+    const fetchResult = await LocationAdapter.getCurrentLocation(
+      context,
+      SettingsService.getInstance().getLocationTimeoutMs()
+    );
     if (!fetchResult.success || !fetchResult.location) {
       const failedResult: LocationCheckResult = {
         status: fetchResult.status,
@@ -780,7 +794,7 @@ struct HomePage {
             .backgroundColor(Colors.primary)
             .borderRadius(6)
             .shadow(Shadows.button)
-            .onClick(() => { this.showCreateSession = true; })
+            .onClick(() => this.openCreateSessionDialog())
         }
       }
     }
@@ -850,7 +864,7 @@ struct HomePage {
             .backgroundColor(Colors.primary)
             .borderRadius(6)
             .shadow(Shadows.button)
-            .onClick(() => { this.showCreateSession = true; })
+            .onClick(() => this.openCreateSessionDialog())
         }
       }
     }

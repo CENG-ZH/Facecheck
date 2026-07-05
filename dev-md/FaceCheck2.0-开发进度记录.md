@@ -152,7 +152,28 @@
 - 签到按钮应恢复可点。
 - 失败尝试中应出现活体失败原因。
 
-## 4. 下一步建议
+## 4. 本轮新增完成（2026-07-05）
+
+本轮在既有地理围栏闭环基础上，继续完成 2.0 交付增强：
+
+- `SettingsService.ets` 新增位置策略持久化：新建场次默认位置校验、默认围栏半径、定位超时。
+- `Index.ets` 新建签到弹窗读取默认位置策略；定位请求统一使用设置页配置的 timeout。
+- `SettingsPage.ets` 新增“地理围栏默认策略”卡片，支持开关、半径 Slider、定位超时 Slider。
+- 新增 `DemoDataService.ets`，可生成和归档带 DEMO 标识的班级、课程和学生。
+- 新增 `DiagnosticService.ets`，可导出不含姓名、学号、人脸照片和签到明细的诊断摘要。
+- 设置页新增“系统诊断”和“演示数据”入口，支持期末展示和真机排查。
+- 新增交付文档：
+  - `dev-md/FaceCheck2.0-系统架构说明.md`
+  - `dev-md/FaceCheck2.0-测试报告.md`
+  - `dev-md/FaceCheck2.0-答辩演示脚本.md`
+
+本轮验证：
+
+- `git diff --check` 通过。
+- 使用临时环境变量 `DEVECO_SDK_HOME=F:\DevEco Studio\sdk` 后，`hvigorw assembleHap` 构建成功。
+- 构建输出仍存在既有 DAO 层 “Function may throw exceptions” 警告，不阻塞 HAP 生成；后续可作为工程洁净度优化项逐步处理。
+
+## 5. 下一步建议
 
 1. 在 DevEco Studio 中先做一次 Build，优先修复 ArkTS / es2abc 编译错误。
 2. 在 Pad 上跑通普通签到、活体签到、地理围栏签到三个案例并截图。
