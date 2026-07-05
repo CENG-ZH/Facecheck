@@ -300,13 +300,15 @@ struct SettingsPage {
   @Builder
   private systemPanel() {
     Column() {
-      this.infoRow('应用版本', '1.1.0')
+      this.infoRow('应用版本', '2.0.0-dev')
       Divider().color(Colors.border).margin({ top: 12, bottom: 12 })
       this.infoRow('界面框架', 'ArkTS + ArkUI')
       Divider().color(Colors.border).margin({ top: 12, bottom: 12 })
       this.infoRow('人脸能力', 'Core Vision Kit')
       Divider().color(Colors.border).margin({ top: 12, bottom: 12 })
-      this.infoRow('数据存储', 'ArkData RDB v3')
+      this.infoRow('位置能力', 'Location Kit 前台即时定位')
+      Divider().color(Colors.border).margin({ top: 12, bottom: 12 })
+      this.infoRow('数据存储', 'ArkData RDB v4')
       Divider().color(Colors.border).margin({ top: 12, bottom: 12 })
       this.infoRow('屏幕方向', '跟随系统自动旋转')
     }
@@ -362,7 +364,7 @@ struct SettingsPage {
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
         .fontColor(Colors.textPrimary)
-      Text('面向课堂考勤的 HarmonyOS 原生应用，支持课程名单快照、人脸比对、活体检测与横竖屏自适应。')
+      Text('面向课堂考勤的 HarmonyOS 原生应用，支持课程名单快照、地理围栏、人脸比对、活体检测与横竖屏自适应。')
         .fontSize(12)
         .fontColor(Colors.textTertiary)
         .lineHeight(19)

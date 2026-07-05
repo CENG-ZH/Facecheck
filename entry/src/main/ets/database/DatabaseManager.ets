@@ -2,7 +2,7 @@ import { relationalStore } from '@kit.ArkData';
 import { Logger } from '../utils/Logger';
 
 const DB_NAME: string = 'facecheck.db';
-const DB_VERSION: number = 3;
+const DB_VERSION: number = 4;
 
 /**
  * 数据库管理器 - 单例模式
@@ -124,7 +124,13 @@ export class DatabaseManager {
         start_time INTEGER NOT NULL,
         late_time INTEGER DEFAULT 0,
         end_time INTEGER DEFAULT 0,
-        status INTEGER DEFAULT 0
+        status INTEGER DEFAULT 0,
+        enable_location_check INTEGER NOT NULL DEFAULT 0,
+        location_name TEXT DEFAULT '',
+        latitude REAL DEFAULT 0,
+        longitude REAL DEFAULT 0,
+        radius_meters INTEGER NOT NULL DEFAULT 100,
+        location_accuracy REAL DEFAULT 0
       )
     `;
 
@@ -149,7 +155,30 @@ export class DatabaseManager {
         liveness_passed INTEGER DEFAULT 0,
         status INTEGER DEFAULT 0,
         captured_image_path TEXT DEFAULT '',
+        check_latitude REAL DEFAULT 0,
+        check_longitude REAL DEFAULT 0,
+        check_location_accuracy REAL DEFAULT 0,
+        distance_meters REAL DEFAULT 0,
+        location_passed INTEGER NOT NULL DEFAULT 1,
+        location_fail_reason TEXT DEFAULT '',
         UNIQUE(session_id, user_id)
+      )
+    `;
+
+    const createAttemptsTable = `
+      CREATE TABLE IF NOT EXISTS check_in_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        user_id INTEGER DEFAULT 0,
+        attempt_time INTEGER NOT NULL,
+        stage TEXT NOT NULL DEFAULT '',
+        success INTEGER NOT NULL DEFAULT 0,
+        fail_reason TEXT DEFAULT '',
+        compare_score REAL DEFAULT 0,
+        liveness_passed INTEGER DEFAULT 0,
+        location_passed INTEGER DEFAULT 0,
+        distance_meters REAL DEFAULT 0,
+        created_at INTEGER NOT NULL
       )
     `;
     const createRecordSessionIndex =
@@ -158,6 +187,10 @@ export class DatabaseManager {
       'CREATE INDEX IF NOT EXISTS idx_records_user_time ON attendance_records(user_id, check_in_time DESC)';
     const createSessionStatusIndex =
       'CREATE INDEX IF NOT EXISTS idx_sessions_status_start ON attendance_sessions(status, start_time DESC)';
+    const createAttemptSessionIndex =
+      'CREATE INDEX IF NOT EXISTS idx_attempts_session_time ON check_in_attempts(session_id, attempt_time DESC)';
+    const createAttemptUserIndex =
+      'CREATE INDEX IF NOT EXISTS idx_attempts_user_time ON check_in_attempts(user_id, attempt_time DESC)';
     try {
       await this.rdbStore.executeSql(createUsersTable);
       await this.rdbStore.executeSql(createClassesTable);
@@ -166,9 +199,12 @@ export class DatabaseManager {
       await this.rdbStore.executeSql(createSessionsTable);
       await this.rdbStore.executeSql(createSessionMembersTable);
       await this.rdbStore.executeSql(createRecordsTable);
+      await this.rdbStore.executeSql(createAttemptsTable);
       await this.rdbStore.executeSql(createRecordSessionIndex);
       await this.rdbStore.executeSql(createRecordUserIndex);
       await this.rdbStore.executeSql(createSessionStatusIndex);
+      await this.rdbStore.executeSql(createAttemptSessionIndex);
+      await this.rdbStore.executeSql(createAttemptUserIndex);
       Logger.info('数据表创建成功');
     } catch (error) {
       Logger.error('数据表创建失败: %{public}s', JSON.stringify(error));
@@ -189,7 +225,7 @@ export class DatabaseManager {
   }
 
   /**
-   * v2 -> v3 无损迁移。旧数据会归入默认课程，历史场次补齐应到名单快照。
+   * v2/v3 -> v4 无损迁移。旧数据归入默认课程，并补齐位置校验字段。
    */
   private async migrateLegacyData(): Promise<void> {
     if (!this.rdbStore) {
@@ -200,6 +236,42 @@ export class DatabaseManager {
     await this.addColumnIfMissing('ALTER TABLE users ADD COLUMN status INTEGER NOT NULL DEFAULT 1');
     await this.addColumnIfMissing(
       'ALTER TABLE attendance_sessions ADD COLUMN course_id INTEGER NOT NULL DEFAULT 0'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_sessions ADD COLUMN enable_location_check INTEGER NOT NULL DEFAULT 0'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_sessions ADD COLUMN location_name TEXT DEFAULT \'\''
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_sessions ADD COLUMN latitude REAL DEFAULT 0'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_sessions ADD COLUMN longitude REAL DEFAULT 0'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_sessions ADD COLUMN radius_meters INTEGER NOT NULL DEFAULT 100'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_sessions ADD COLUMN location_accuracy REAL DEFAULT 0'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_records ADD COLUMN check_latitude REAL DEFAULT 0'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_records ADD COLUMN check_longitude REAL DEFAULT 0'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_records ADD COLUMN check_location_accuracy REAL DEFAULT 0'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_records ADD COLUMN distance_meters REAL DEFAULT 0'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_records ADD COLUMN location_passed INTEGER NOT NULL DEFAULT 1'
+    );
+    await this.addColumnIfMissing(
+      'ALTER TABLE attendance_records ADD COLUMN location_fail_reason TEXT DEFAULT \'\''
     );
 
     const now = Date.now();
@@ -265,8 +337,20 @@ export class DatabaseManager {
       await this.rdbStore.executeSql(
         'CREATE INDEX IF NOT EXISTS idx_session_members_session ON session_members(session_id, user_id)'
       );
+      await this.rdbStore.executeSql(
+        'CREATE INDEX IF NOT EXISTS idx_records_session_user ON attendance_records(session_id, user_id)'
+      );
+      await this.rdbStore.executeSql(
+        'CREATE INDEX IF NOT EXISTS idx_records_status_time ON attendance_records(status, check_in_time DESC)'
+      );
+      await this.rdbStore.executeSql(
+        'CREATE INDEX IF NOT EXISTS idx_attempts_session_time ON check_in_attempts(session_id, attempt_time DESC)'
+      );
+      await this.rdbStore.executeSql(
+        'CREATE INDEX IF NOT EXISTS idx_attempts_user_time ON check_in_attempts(user_id, attempt_time DESC)'
+      );
       this.rdbStore.commit();
-      Logger.info('数据库 v3 关系模型迁移完成');
+      Logger.info('数据库 v4 关系与位置模型迁移完成');
     } catch (error) {
       try {
         this.rdbStore.rollBack();
@@ -296,6 +380,7 @@ export class DatabaseManager {
     const store = this.getStore();
     try {
       store.beginTransaction();
+      await store.executeSql('DELETE FROM check_in_attempts');
       await store.executeSql('DELETE FROM attendance_records');
       await store.executeSql('DELETE FROM session_members');
       await store.executeSql('DELETE FROM attendance_sessions');

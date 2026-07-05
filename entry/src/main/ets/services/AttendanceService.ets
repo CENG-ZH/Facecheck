@@ -1,5 +1,6 @@
 import { image } from '@kit.ImageKit';
 import { AttendanceDao } from '../database/AttendanceDao';
+import { CheckInAttemptDao } from '../database/CheckInAttemptDao';
 import { SessionDao } from '../database/SessionDao';
 import { UserDao } from '../database/UserDao';
 import { SessionMemberDao } from '../database/SessionMemberDao';
@@ -19,6 +20,8 @@ import { SettingsService } from './SettingsService';
 import { Logger } from '../utils/Logger';
 import { AttendanceRules } from '../utils/AttendanceRules';
 import { UserModel } from '../models/UserModel';
+import { GeoFenceConfig, LocationCheckResult } from '../models/LocationModel';
+import { CheckInAttempt, CheckInAttemptDraft } from '../models/CheckInAttemptModel';
 
 /**
  * 签到业务服务
@@ -36,6 +39,7 @@ import { UserModel } from '../models/UserModel';
  */
 export class AttendanceService {
   private attendanceDao: AttendanceDao = new AttendanceDao();
+  private attemptDao: CheckInAttemptDao = new CheckInAttemptDao();
   private sessionDao: SessionDao = new SessionDao();
   private userDao: UserDao = new UserDao();
   private sessionMemberDao: SessionMemberDao = new SessionMemberDao();
@@ -44,7 +48,7 @@ export class AttendanceService {
   /**
    * 创建签到场次
    */
-  async createSession(title: string, courseId: number = 0): Promise<number> {
+  async createSession(title: string, courseId: number = 0, geoFenceConfig?: GeoFenceConfig): Promise<number> {
     const activeSession = await this.sessionDao.getActiveSession();
     if (activeSession) {
       throw new Error(`已有进行中的场次“${activeSession.title}”，请先结束该场次`);
@@ -61,7 +65,7 @@ export class AttendanceService {
     const settings = SettingsService.getInstance().getSettings();
     const lateTime = now + settings.lateMinutes * 60 * 1000;
     const endTime = now + 2 * 60 * 60 * 1000;
-    const sessionId = await this.sessionDao.insert(title, resolvedCourseId, now, lateTime, endTime);
+    const sessionId = await this.sessionDao.insert(title, resolvedCourseId, now, lateTime, endTime, geoFenceConfig);
     try {
       const snapshotCount = await this.sessionMemberDao.createSnapshot(sessionId, resolvedCourseId);
       if (snapshotCount <= 0) {
@@ -107,7 +111,8 @@ export class AttendanceService {
         compareScore: 0,
         livenessPassed: false,
         status: CheckInStatus.ABSENT,
-        capturedImagePath: ''
+        capturedImagePath: '',
+        locationPassed: true
       };
       await this.attendanceDao.insert(draft);
     }
@@ -136,6 +141,7 @@ export class AttendanceService {
     userId: number,
     capturedPixelMap: image.PixelMap,
     livenessPassed: boolean = false,
+    locationCheck?: LocationCheckResult,
     onStage?: (stage: number) => void
   ): Promise<CheckInResult> {
     try {
@@ -166,6 +172,15 @@ export class AttendanceService {
       const alreadyCheckedIn = await this.attendanceDao.hasCheckedIn(sessionId, userId);
       if (alreadyCheckedIn) {
         return { success: false, message: `${user.name} 在此场次已签到，不可重复签到` };
+      }
+
+      if (session.enableLocationCheck) {
+        if (!locationCheck || !locationCheck.passed) {
+          return {
+            success: false,
+            message: locationCheck?.message ?? '本场已启用位置校验，请先确认签到设备位于签到地点范围内'
+          };
+        }
       }
 
       // 4. 人脸检测（质量校验）
@@ -221,7 +236,13 @@ export class AttendanceService {
         compareScore: compareResult.score,
         livenessPassed: livenessPassed,
         status: status,
-        capturedImagePath: ''
+        capturedImagePath: '',
+        checkLatitude: locationCheck?.currentLocation?.latitude ?? 0,
+        checkLongitude: locationCheck?.currentLocation?.longitude ?? 0,
+        checkLocationAccuracy: locationCheck?.currentLocation?.accuracy ?? 0,
+        distanceMeters: locationCheck?.distanceMeters ?? 0,
+        locationPassed: !session.enableLocationCheck || (locationCheck?.passed === true),
+        locationFailReason: locationCheck?.passed === false ? locationCheck.message : ''
       };
 
       onStage?.(4);
@@ -234,14 +255,22 @@ export class AttendanceService {
         compareScore: record.compareScore,
         livenessPassed: record.livenessPassed,
         status: record.status,
-        capturedImagePath: record.capturedImagePath
+        capturedImagePath: record.capturedImagePath,
+        checkLatitude: record.checkLatitude ?? 0,
+        checkLongitude: record.checkLongitude ?? 0,
+        checkLocationAccuracy: record.checkLocationAccuracy ?? 0,
+        distanceMeters: record.distanceMeters ?? 0,
+        locationPassed: record.locationPassed !== false,
+        locationFailReason: record.locationFailReason ?? ''
       };
 
       // 9. 返回结果
       const statusText = status === CheckInStatus.LATE ? '（迟到）' : '';
+      const locationText = session.enableLocationCheck && locationCheck
+        ? `，设备距签到点约 ${Math.round(locationCheck.distanceMeters)} 米` : '';
       return {
         success: true,
-        message: `${user.name} 签到成功${statusText}，匹配度 ${(compareResult.score * 100).toFixed(0)}%`,
+        message: `${user.name} 签到成功${statusText}，匹配度 ${(compareResult.score * 100).toFixed(0)}%${locationText}`,
         record: fullRecord,
         compareScore: compareResult.score
       };
@@ -262,6 +291,14 @@ export class AttendanceService {
 
   async getSessionMembers(sessionId: number): Promise<UserModel[]> {
     return await this.sessionMemberDao.getMembers(sessionId);
+  }
+
+  async recordCheckInAttempt(attempt: CheckInAttemptDraft): Promise<void> {
+    await this.attemptDao.insert(attempt);
+  }
+
+  async getRecentAttempts(sessionId: number, limit: number = 30): Promise<CheckInAttempt[]> {
+    return await this.attemptDao.getRecentBySession(sessionId, limit);
   }
 
   /**

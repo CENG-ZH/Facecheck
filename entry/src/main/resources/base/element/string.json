@@ -19,6 +19,10 @@
     {
       "name": "camera_permission_reason",
       "value": "用于人脸采集和签到验证"
+    },
+    {
+      "name": "location_permission_reason",
+      "value": "用于确认签到设备是否位于本场签到地点范围内"
     }
   ]
 }

@@ -10,6 +10,12 @@ export interface AttendanceSession {
   lateTime: number;
   endTime: number;
   status: SessionStatus;
+  enableLocationCheck: boolean;
+  locationName: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  locationAccuracy: number;
 }
 
 /**
@@ -33,6 +39,12 @@ export interface AttendanceRecord {
   livenessPassed: boolean;
   status: CheckInStatus;
   capturedImagePath: string;
+  checkLatitude: number;
+  checkLongitude: number;
+  checkLocationAccuracy: number;
+  distanceMeters: number;
+  locationPassed: boolean;
+  locationFailReason: string;
 }
 
 /**
@@ -46,6 +58,12 @@ export interface AttendanceRecordDraft {
   livenessPassed: boolean;
   status: CheckInStatus;
   capturedImagePath: string;
+  checkLatitude?: number;
+  checkLongitude?: number;
+  checkLocationAccuracy?: number;
+  distanceMeters?: number;
+  locationPassed?: boolean;
+  locationFailReason?: string;
 }
 
 /**
