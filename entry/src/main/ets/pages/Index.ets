@@ -3,14 +3,17 @@ import { image } from '@kit.ImageKit';
 import { AppBottomNav } from '../components/AppBottomNav';
 import { AnimatedCard } from '../components/AnimatedCard';
 import { CircleProgress } from '../components/CircleProgress';
+import { LocationStatusCard } from '../components/LocationStatusCard';
 import { StatusPill, StatusType } from '../components/StatusPill';
 import { AttendanceService } from '../services/AttendanceService';
 import { UserService } from '../services/UserService';
 import { OrganizationService } from '../services/OrganizationService';
 import { SettingsService } from '../services/SettingsService';
+import { GeoFenceService } from '../services/GeoFenceService';
 import { FaceVisionAdapter } from '../kits/FaceVisionAdapter';
 import { CameraAdapter } from '../kits/CameraAdapter';
 import { LivenessAdapter } from '../kits/LivenessAdapter';
+import { LocationAdapter } from '../kits/LocationAdapter';
 import {
   AttendanceSession,
   AttendanceStats,
@@ -19,6 +22,8 @@ import {
 } from '../models/AttendanceModel';
 import { UserModel } from '../models/UserModel';
 import { Course } from '../models/OrganizationModel';
+import { CheckInAttempt, CheckInAttemptStage } from '../models/CheckInAttemptModel';
+import { GeoFenceConfig, LocationCheckResult } from '../models/LocationModel';
 import { DateUtils } from '../utils/DateUtils';
 import { Logger } from '../utils/Logger';
 import { Shadows, Radius, Colors } from '../utils/DesignTokens';
@@ -41,6 +46,7 @@ struct HomePage {
   @State stats: AttendanceStats = { totalUsers: 0, checkedIn: 0, lateCount: 0, absentCount: 0 };
   @State attendanceRate: number = 0;
   @State recentRecords: AttendanceRecord[] = [];
+  @State recentAttempts: CheckInAttempt[] = [];
   @State allUsers: UserModel[] = [];
   @State filteredUsers: UserModel[] = [];
   @State courses: Course[] = [];
@@ -63,6 +69,15 @@ struct HomePage {
   @State displayScore: number = 0;
   @State recentPanelOpacity: number = 0;
   @State resultOpacity: number = 0;
+  @State sessionLocationEnabled: boolean = false;
+  @State sessionLocationName: string = '当前教室';
+  @State sessionRadiusMeters: number = 100;
+  @State sessionLatitude: number = 0;
+  @State sessionLongitude: number = 0;
+  @State sessionLocationAccuracy: number = 0;
+  @State sessionLocationMessage: string = '';
+  @State isLocatingSessionPoint: boolean = false;
+  @State currentLocationMessage: string = '';
 
   private attendanceService: AttendanceService = new AttendanceService();
   private userService: UserService = new UserService();
@@ -73,6 +88,8 @@ struct HomePage {
   private activitySessionId: number = -1;
   private activeAttemptRecorded: boolean = false;
   private activitySequence: number = 0;
+  private pendingLocationCheck: LocationCheckResult | null = null;
+  private readonly radiusOptions: number[] = [50, 100, 200, 300];
 
   aboutToAppear(): void {
     this.compactListener = this.getUIContext().getMediaQuery().matchMediaSync('(width < 600vp)');
@@ -134,6 +151,7 @@ struct HomePage {
         this.allUsers = await this.attendanceService.getSessionMembers(this.currentSession.id);
         this.stats = this.normalizeStats(await this.attendanceService.getSessionStats(this.currentSession.id));
         this.recentRecords = await this.attendanceService.getSessionRecords(this.currentSession.id);
+        this.recentAttempts = await this.attendanceService.getRecentAttempts(this.currentSession.id, 30);
       } else {
         this.allUsers = await this.userService.getAllUsers();
         const userStats = await this.userService.getUserStats();
@@ -144,6 +162,7 @@ struct HomePage {
           absentCount: userStats.total
         });
         this.recentRecords = [];
+        this.recentAttempts = [];
       }
       this.attendanceRate = this.calculateAttendanceRate(this.stats);
       this.filterUsers();
@@ -207,11 +226,8 @@ struct HomePage {
 
   private syncActivityFeed(): void {
     const sessionId = this.currentSession?.id ?? -1;
-    if (this.activitySessionId === sessionId) {
-      return;
-    }
     this.activitySessionId = sessionId;
-    this.checkInActivities = this.recentRecords.slice(0, 20).map((record: AttendanceRecord) => {
+    const recordActivities: CheckInActivity[] = this.recentRecords.slice(0, 20).map((record: AttendanceRecord) => {
       const activity: CheckInActivity = {
         id: `record-${record.id}`,
         userName: this.getUserNameById(record.userId),
@@ -223,11 +239,51 @@ struct HomePage {
       };
       return activity;
     });
+    const attemptActivities: CheckInActivity[] = this.recentAttempts
+      .filter((attempt: CheckInAttempt) => !attempt.success)
+      .slice(0, 20)
+      .map((attempt: CheckInAttempt) => {
+        const activity: CheckInActivity = {
+          id: `attempt-db-${attempt.id}`,
+          userName: this.getUserNameById(attempt.userId),
+          time: attempt.attemptTime,
+          status: CheckInStatus.FAILED,
+          statusText: '未通过',
+          message: this.getAttemptMessage(attempt),
+          score: attempt.compareScore
+        };
+        return activity;
+      });
+    const combined: CheckInActivity[] = [];
+    recordActivities.forEach((activity: CheckInActivity) => {
+      combined.push(activity);
+    });
+    attemptActivities.forEach((activity: CheckInActivity) => {
+      combined.push(activity);
+    });
+    combined.sort((left: CheckInActivity, right: CheckInActivity) => right.time - left.time);
+    this.checkInActivities = combined.slice(0, 40);
   }
 
-  private appendCheckInActivity(status: CheckInStatus, message: string, score: number = 0): void {
+  private getAttemptMessage(attempt: CheckInAttempt): string {
+    if (attempt.stage === CheckInAttemptStage.LOCATION) {
+      return `位置校验未通过：${attempt.failReason}`;
+    }
+    if (attempt.stage === CheckInAttemptStage.LIVENESS) {
+      return `活体检测未通过：${attempt.failReason}`;
+    }
+    if (attempt.stage === CheckInAttemptStage.CAPTURE) {
+      return `拍照未完成：${attempt.failReason}`;
+    }
+    if (attempt.stage === CheckInAttemptStage.FACE) {
+      return `人脸验证未通过：${attempt.failReason}`;
+    }
+    return attempt.failReason;
+  }
+
+  private appendCheckInActivity(status: CheckInStatus, message: string, score: number = 0): boolean {
     if (this.activeAttemptRecorded) {
-      return;
+      return false;
     }
     this.activeAttemptRecorded = true;
     this.activitySequence += 1;
@@ -242,6 +298,154 @@ struct HomePage {
       score: score
     };
     this.checkInActivities = [activity, ...this.checkInActivities].slice(0, 40);
+    return true;
+  }
+
+  private persistFailedAttempt(
+    stage: string,
+    message: string,
+    score: number = 0,
+    livenessPassed: boolean = false
+  ): void {
+    if (!this.currentSession || this.selectedUserId < 0) {
+      return;
+    }
+    const locationPassed = !this.currentSession.enableLocationCheck || (this.pendingLocationCheck?.passed === true);
+    const distanceMeters = this.pendingLocationCheck?.distanceMeters ?? 0;
+    this.attendanceService.recordCheckInAttempt({
+      sessionId: this.currentSession.id,
+      userId: this.selectedUserId,
+      attemptTime: Date.now(),
+      stage: stage,
+      success: false,
+      failReason: message,
+      compareScore: score,
+      livenessPassed: livenessPassed,
+      locationPassed: locationPassed,
+      distanceMeters: distanceMeters
+    }).catch((error: Error) => {
+      Logger.warn('记录失败签到尝试异常: %{public}s', error.message);
+    });
+  }
+
+  private hasSessionLocationPoint(): boolean {
+    return this.sessionLatitude !== 0 || this.sessionLongitude !== 0;
+  }
+
+  private buildGeoFenceConfig(): GeoFenceConfig | undefined {
+    if (!this.sessionLocationEnabled) {
+      return undefined;
+    }
+    return {
+      enableLocationCheck: true,
+      locationName: this.sessionLocationName.trim() || '当前教室',
+      latitude: this.sessionLatitude,
+      longitude: this.sessionLongitude,
+      radiusMeters: this.sessionRadiusMeters,
+      locationAccuracy: this.sessionLocationAccuracy
+    };
+  }
+
+  private resetSessionLocationDraft(): void {
+    this.sessionLocationEnabled = false;
+    this.sessionLocationName = '当前教室';
+    this.sessionRadiusMeters = 100;
+    this.sessionLatitude = 0;
+    this.sessionLongitude = 0;
+    this.sessionLocationAccuracy = 0;
+    this.sessionLocationMessage = '';
+    this.currentLocationMessage = '';
+  }
+
+  private openCreateSessionDialog(): void {
+    this.resetSessionLocationDraft();
+    const settingsService = SettingsService.getInstance();
+    this.sessionLocationEnabled = settingsService.isDefaultLocationCheckEnabled();
+    this.sessionRadiusMeters = settingsService.getDefaultLocationRadius();
+    this.showCreateSession = true;
+  }
+
+  private async locateSessionPoint(): Promise<void> {
+    if (this.isLocatingSessionPoint) {
+      return;
+    }
+    const hostContext = this.getUIContext().getHostContext();
+    if (!hostContext) {
+      this.sessionLocationMessage = '无法获取应用上下文';
+      return;
+    }
+
+    this.isLocatingSessionPoint = true;
+    this.sessionLocationMessage = '正在获取当前 Pad 位置...';
+    try {
+      const result = await LocationAdapter.getCurrentLocation(
+        hostContext,
+        SettingsService.getInstance().getLocationTimeoutMs()
+      );
+      if (!result.success || !result.location) {
+        this.sessionLocationMessage = result.message;
+        this.showToast(result.message, 2600);
+        return;
+      }
+      this.sessionLatitude = result.location.latitude;
+      this.sessionLongitude = result.location.longitude;
+      this.sessionLocationAccuracy = result.location.accuracy;
+      this.sessionLocationMessage = `已记录当前 Pad 位置，精度约 ${Math.round(result.location.accuracy)} 米`;
+      this.showToast('已使用当前 Pad 位置作为签到点');
+    } finally {
+      this.isLocatingSessionPoint = false;
+    }
+  }
+
+  private buildGeoFenceConfigFromSession(session: AttendanceSession): GeoFenceConfig {
+    return {
+      enableLocationCheck: session.enableLocationCheck,
+      locationName: session.locationName,
+      latitude: session.latitude,
+      longitude: session.longitude,
+      radiusMeters: session.radiusMeters,
+      locationAccuracy: session.locationAccuracy
+    };
+  }
+
+  private async verifyCurrentPadLocation(context: Context): Promise<boolean> {
+    if (!this.currentSession || !this.currentSession.enableLocationCheck) {
+      this.pendingLocationCheck = null;
+      this.currentLocationMessage = '';
+      return true;
+    }
+
+    this.currentStep = 0;
+    this.stepText = '校验签到地点';
+    this.currentLocationMessage = '正在校验当前 Pad 位置...';
+    const fetchResult = await LocationAdapter.getCurrentLocation(
+      context,
+      SettingsService.getInstance().getLocationTimeoutMs()
+    );
+    if (!fetchResult.success || !fetchResult.location) {
+      const failedResult: LocationCheckResult = {
+        status: fetchResult.status,
+        passed: false,
+        message: fetchResult.message,
+        distanceMeters: 0
+      };
+      this.pendingLocationCheck = failedResult;
+      this.currentLocationMessage = fetchResult.message;
+      this.finishCheckInFailure(fetchResult.message, CheckInAttemptStage.LOCATION);
+      return false;
+    }
+
+    const checkResult = GeoFenceService.check(
+      this.buildGeoFenceConfigFromSession(this.currentSession),
+      fetchResult.location
+    );
+    this.pendingLocationCheck = checkResult;
+    this.currentLocationMessage = checkResult.message;
+    if (!checkResult.passed) {
+      this.finishCheckInFailure(checkResult.message, CheckInAttemptStage.LOCATION);
+      return false;
+    }
+    return true;
   }
 
   private getActivityDotColor(status: CheckInStatus): string {
@@ -276,13 +480,18 @@ struct HomePage {
       this.showToast('请先在教学组织中创建课程');
       return;
     }
+    if (this.sessionLocationEnabled && !this.hasSessionLocationPoint()) {
+      this.showToast('请先使用当前 Pad 位置作为签到点', 2600);
+      return;
+    }
     const course = this.courses.find((item: Course) => item.id === this.selectedCourseId);
     const title = this.newSessionTitle.trim() ||
       `${course?.name ?? '课程'} ${DateUtils.formatDate(Date.now())}`;
     try {
-      await this.attendanceService.createSession(title, this.selectedCourseId);
+      await this.attendanceService.createSession(title, this.selectedCourseId, this.buildGeoFenceConfig());
       this.showCreateSession = false;
       this.newSessionTitle = '';
+      this.resetSessionLocationDraft();
       await this.loadData();
       this.showToast('签到场次已创建');
     } catch (error) {
@@ -325,8 +534,9 @@ struct HomePage {
     this.displayScore = 0;
     this.resultOpacity = 0;
     this.activeAttemptRecorded = false;
+    this.pendingLocationCheck = null;
     this.currentStep = 0;
-    this.stepText = '检查相机权限';
+    this.stepText = this.currentSession.enableLocationCheck ? '校验签到地点' : '检查相机权限';
 
     try {
       const context = this.getUIContext().getHostContext();
@@ -334,12 +544,17 @@ struct HomePage {
         throw new Error('无法获取应用上下文');
       }
 
+      const locationReady = await this.verifyCurrentPadLocation(context);
+      if (!locationReady) {
+        return;
+      }
+
       if (SettingsService.getInstance().isLivenessEnabled()) {
         this.currentStep = 1;
         this.stepText = '进行活体检测';
         const started = await LivenessAdapter.startLivenessDetection(context);
         if (!started) {
-          this.finishCheckInFailure('活体检测启动失败，请检查相机权限或设备支持');
+          this.finishCheckInFailure('活体检测启动失败，请检查相机权限或设备支持', CheckInAttemptStage.LIVENESS);
           return;
         }
         this.awaitingLivenessResult = true;
@@ -362,7 +577,7 @@ struct HomePage {
     this.stepText = '读取活体检测结果';
     const result = await LivenessAdapter.getLivenessResult(context);
     if (!result.passed) {
-      this.finishCheckInFailure(result.message);
+      this.finishCheckInFailure(result.message, CheckInAttemptStage.LIVENESS);
       return;
     }
     await this.completeFaceCheckIn(context, true, result.pixelMap);
@@ -381,7 +596,7 @@ struct HomePage {
         capturedPixelMap = await CameraAdapter.capturePhoto(context);
       }
       if (!capturedPixelMap) {
-        this.finishCheckInFailure('未拍摄照片，签到已取消');
+        this.finishCheckInFailure('未拍摄照片，签到已取消', CheckInAttemptStage.CAPTURE, 0, livenessPassed);
         return;
       }
       if (!this.currentSession) {
@@ -396,6 +611,7 @@ struct HomePage {
         this.selectedUserId,
         capturedPixelMap,
         livenessPassed,
+        this.pendingLocationCheck ?? undefined,
         (stage: number) => {
           this.currentStep = stage;
           if (stage === 2) this.stepText = '评估人脸与图像质量';
@@ -418,7 +634,14 @@ struct HomePage {
       this.getUIContext().animateTo({ duration: 800, curve: Curve.EaseOut }, () => {
         this.displayScore = this.lastScore;
       });
-      this.appendCheckInActivity(result.record?.status ?? CheckInStatus.FAILED, result.message, result.compareScore ?? 0);
+      const activityAppended = this.appendCheckInActivity(
+        result.record?.status ?? CheckInStatus.FAILED,
+        result.message,
+        result.compareScore ?? 0
+      );
+      if (!result.success && activityAppended) {
+        this.persistFailedAttempt(CheckInAttemptStage.FACE, result.message, result.compareScore ?? 0, livenessPassed);
+      }
       if (result.success) {
         await this.loadData();
         this.selectedUserId = -1;
@@ -429,18 +652,31 @@ struct HomePage {
       this.finishCheckInFailure('签到过程发生异常');
     } finally {
       capturedPixelMap?.release();
+      this.pendingLocationCheck = null;
       this.isChecking = false;
       this.stepText = '';
     }
   }
 
-  private finishCheckInFailure(message: string): void {
+  private finishCheckInFailure(
+    message: string,
+    stage: string = CheckInAttemptStage.SYSTEM,
+    score: number = this.lastScore,
+    livenessPassed: boolean = false
+  ): void {
     this.currentStep = 4;
     this.checkResultSuccess = false;
     this.checkResultMessage = message;
     this.showResult = true;
     this.resultOpacity = 0;
-    this.appendCheckInActivity(CheckInStatus.FAILED, message, this.lastScore);
+    this.isChecking = false;
+    this.awaitingLivenessResult = false;
+    this.stepText = '';
+    const activityAppended = this.appendCheckInActivity(CheckInStatus.FAILED, message, score);
+    if (activityAppended) {
+      this.persistFailedAttempt(stage, message, score, livenessPassed);
+    }
+    this.pendingLocationCheck = null;
     this.getUIContext().animateTo({ duration: 300, curve: Curve.EaseOut }, () => {
       this.resultOpacity = 1;
     });
@@ -558,7 +794,7 @@ struct HomePage {
             .backgroundColor(Colors.primary)
             .borderRadius(6)
             .shadow(Shadows.button)
-            .onClick(() => { this.showCreateSession = true; })
+            .onClick(() => this.openCreateSessionDialog())
         }
       }
     }
@@ -586,6 +822,19 @@ struct HomePage {
           .fontSize(12)
           .fontColor(Colors.textTertiary)
           .margin({ top: 5 })
+        if (this.currentSession.enableLocationCheck) {
+          LocationStatusCard({
+            locationEnabled: true,
+            locationName: this.currentSession.locationName,
+            radiusMeters: this.currentSession.radiusMeters,
+            latitude: this.currentSession.latitude,
+            longitude: this.currentSession.longitude,
+            accuracy: this.currentSession.locationAccuracy,
+            message: this.currentLocationMessage || '刷脸前将校验当前 Pad 是否仍在范围内',
+            passed: true
+          })
+            .margin({ top: 12 })
+        }
         Column() {
           FaceEnrollButton() {
             Button('结束本场')
@@ -615,7 +864,7 @@ struct HomePage {
             .backgroundColor(Colors.primary)
             .borderRadius(6)
             .shadow(Shadows.button)
-            .onClick(() => { this.showCreateSession = true; })
+            .onClick(() => this.openCreateSessionDialog())
         }
       }
     }
@@ -821,7 +1070,7 @@ struct HomePage {
   private progressPanel() {
     if (this.isChecking || this.currentStep >= 0) {
       Row() {
-        this.stepNode(0, '权限')
+        this.stepNode(0, this.currentSession?.enableLocationCheck ? '定位' : '权限')
         this.stepLine(1)
         this.stepNode(1, '活体')
         this.stepLine(2)
@@ -971,10 +1220,100 @@ struct HomePage {
     .width('100%')
     .height(38)
     .padding({ left: 10, right: 10 })
-    .backgroundColor(this.checkInActivities.length > 0
-      ? this.getActivityDotBgColor(this.checkInActivities[0].status) : Colors.successBgAlt)
+      .backgroundColor(this.checkInActivities.length > 0
+        ? this.getActivityDotBgColor(this.checkInActivities[0].status) : Colors.successBgAlt)
     .borderRadius(6)
     .margin({ bottom: 6 })
+  }
+
+  @Builder
+  private locationSetupPanel() {
+    Column() {
+      Row() {
+        Column() {
+          Text('地理围栏')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Colors.textPrimary)
+          Text('发起时记录当前 Pad 位置，刷脸前再次校验')
+            .fontSize(11)
+            .fontColor(Colors.textTertiary)
+            .margin({ top: 3 })
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
+        Toggle({ type: ToggleType.Switch, isOn: this.sessionLocationEnabled })
+          .selectedColor(Colors.primary)
+          .onChange((isOn: boolean) => {
+            this.sessionLocationEnabled = isOn;
+            if (!isOn) {
+              this.sessionLocationMessage = '';
+            }
+          })
+      }
+      .width('100%')
+
+      if (this.sessionLocationEnabled) {
+        LocationStatusCard({
+          locationEnabled: true,
+          locationName: this.sessionLocationName,
+          radiusMeters: this.sessionRadiusMeters,
+          latitude: this.sessionLatitude,
+          longitude: this.sessionLongitude,
+          accuracy: this.sessionLocationAccuracy,
+          message: this.sessionLocationMessage,
+          loading: this.isLocatingSessionPoint,
+          passed: this.hasSessionLocationPoint()
+        })
+          .margin({ top: 10 })
+
+        TextInput({ placeholder: '地点名称，例如 教学楼 A306', text: this.sessionLocationName })
+          .width('100%')
+          .height(38)
+          .fontSize(13)
+          .backgroundColor(Colors.bg)
+          .borderRadius(6)
+          .margin({ top: 10 })
+          .onChange((value: string) => { this.sessionLocationName = value; })
+
+        Row() {
+          ForEach(this.radiusOptions, (radius: number) => {
+            Text(`${radius}m`)
+              .fontSize(12)
+              .fontColor(this.sessionRadiusMeters === radius ? Colors.white : Colors.textSecondary)
+              .textAlign(TextAlign.Center)
+              .width(58)
+              .height(30)
+              .backgroundColor(this.sessionRadiusMeters === radius ? Colors.primary : Colors.bg)
+              .borderRadius(6)
+              .margin({ right: 6 })
+              .onClick(() => { this.sessionRadiusMeters = radius; })
+          }, (radius: number) => radius.toString())
+        }
+        .width('100%')
+        .margin({ top: 10 })
+
+        Column() {
+          FaceEnrollButton({ animationEnabled: !this.isLocatingSessionPoint }) {
+            Button(this.isLocatingSessionPoint ? '正在定位' : '使用当前 Pad 位置')
+              .width('100%')
+              .height(38)
+              .fontSize(13)
+              .backgroundColor(Colors.primary)
+              .borderRadius(6)
+              .enabled(!this.isLocatingSessionPoint)
+              .onClick(() => this.locateSessionPoint())
+          }
+        }
+        .width('100%')
+        .margin({ top: 10 })
+      }
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor(Colors.primaryLight)
+    .borderRadius(8)
+    .margin({ top: 12, bottom: 2 })
   }
 
   @Builder
@@ -1060,7 +1399,10 @@ struct HomePage {
         .width('100%')
         .height('100%')
         .backgroundColor('rgba(0,0,0,0.36)')
-        .onClick(() => { this.showCreateSession = false; })
+        .onClick(() => {
+          this.showCreateSession = false;
+          this.resetSessionLocationDraft();
+        })
       Column() {
         Text('发起课程签到')
           .fontSize(19)
@@ -1105,6 +1447,7 @@ struct HomePage {
           .backgroundColor(Colors.bg)
           .borderRadius(6)
           .onChange((value: string) => { this.newSessionTitle = value; })
+        this.locationSetupPanel()
         Row() {
           Column() {
             FaceEnrollButton() {
@@ -1114,7 +1457,10 @@ struct HomePage {
                 .fontColor(Colors.textPrimary)
                 .backgroundColor(Colors.bg)
                 .borderRadius(6)
-                .onClick(() => { this.showCreateSession = false; })
+                .onClick(() => {
+                  this.showCreateSession = false;
+                  this.resetSessionLocationDraft();
+                })
             }
           }
           .layoutWeight(1)

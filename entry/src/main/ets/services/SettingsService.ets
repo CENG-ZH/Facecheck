@@ -9,14 +9,20 @@ const PREFERENCES_NAME: string = 'facecheck_settings';
 const KEY_FACE_THRESHOLD: string = 'face_threshold';
 const KEY_ENABLE_LIVENESS: string = 'enable_liveness';
 const KEY_LATE_MINUTES: string = 'late_minutes';
+const KEY_DEFAULT_LOCATION_ENABLED: string = 'default_location_enabled';
+const KEY_DEFAULT_LOCATION_RADIUS: string = 'default_location_radius';
+const KEY_LOCATION_TIMEOUT_SECONDS: string = 'location_timeout_seconds';
 
 /**
  * 应用设置数据
  */
 export interface AppSettings {
-  faceThreshold: number;     // 人脸匹配阈值 (0-100)
-  enableLiveness: boolean;   // 是否启用活体检测
-  lateMinutes: number;       // 迟到时间（分钟）
+  faceThreshold: number;
+  enableLiveness: boolean;
+  lateMinutes: number;
+  defaultLocationEnabled: boolean;
+  defaultLocationRadius: number;
+  locationTimeoutSeconds: number;
 }
 
 /**
@@ -25,7 +31,10 @@ export interface AppSettings {
 const DEFAULT_SETTINGS: AppSettings = {
   faceThreshold: 80,
   enableLiveness: false,
-  lateMinutes: 15
+  lateMinutes: 15,
+  defaultLocationEnabled: false,
+  defaultLocationRadius: 100,
+  locationTimeoutSeconds: 10
 };
 
 /**
@@ -38,7 +47,10 @@ export class SettingsService {
   private cachedSettings: AppSettings = {
     faceThreshold: DEFAULT_SETTINGS.faceThreshold,
     enableLiveness: DEFAULT_SETTINGS.enableLiveness,
-    lateMinutes: DEFAULT_SETTINGS.lateMinutes
+    lateMinutes: DEFAULT_SETTINGS.lateMinutes,
+    defaultLocationEnabled: DEFAULT_SETTINGS.defaultLocationEnabled,
+    defaultLocationRadius: DEFAULT_SETTINGS.defaultLocationRadius,
+    locationTimeoutSeconds: DEFAULT_SETTINGS.locationTimeoutSeconds
   };
 
   private constructor() {
@@ -82,12 +94,27 @@ export class SettingsService {
       this.cachedSettings.lateMinutes = await this.prefs.get(
         KEY_LATE_MINUTES, DEFAULT_SETTINGS.lateMinutes
       ) as number;
+
+      this.cachedSettings.defaultLocationEnabled = await this.prefs.get(
+        KEY_DEFAULT_LOCATION_ENABLED, DEFAULT_SETTINGS.defaultLocationEnabled
+      ) as boolean;
+
+      this.cachedSettings.defaultLocationRadius = await this.prefs.get(
+        KEY_DEFAULT_LOCATION_RADIUS, DEFAULT_SETTINGS.defaultLocationRadius
+      ) as number;
+
+      this.cachedSettings.locationTimeoutSeconds = await this.prefs.get(
+        KEY_LOCATION_TIMEOUT_SECONDS, DEFAULT_SETTINGS.locationTimeoutSeconds
+      ) as number;
     } catch (error) {
       Logger.error('加载设置失败: %{public}s', JSON.stringify(error));
       this.cachedSettings = {
         faceThreshold: DEFAULT_SETTINGS.faceThreshold,
         enableLiveness: DEFAULT_SETTINGS.enableLiveness,
-        lateMinutes: DEFAULT_SETTINGS.lateMinutes
+        lateMinutes: DEFAULT_SETTINGS.lateMinutes,
+        defaultLocationEnabled: DEFAULT_SETTINGS.defaultLocationEnabled,
+        defaultLocationRadius: DEFAULT_SETTINGS.defaultLocationRadius,
+        locationTimeoutSeconds: DEFAULT_SETTINGS.locationTimeoutSeconds
       };
     }
   }
@@ -99,7 +126,10 @@ export class SettingsService {
     const settings: AppSettings = {
       faceThreshold: this.cachedSettings.faceThreshold,
       enableLiveness: this.cachedSettings.enableLiveness,
-      lateMinutes: this.cachedSettings.lateMinutes
+      lateMinutes: this.cachedSettings.lateMinutes,
+      defaultLocationEnabled: this.cachedSettings.defaultLocationEnabled,
+      defaultLocationRadius: this.cachedSettings.defaultLocationRadius,
+      locationTimeoutSeconds: this.cachedSettings.locationTimeoutSeconds
     };
     return settings;
   }
@@ -132,6 +162,22 @@ export class SettingsService {
     return this.cachedSettings.lateMinutes;
   }
 
+  isDefaultLocationCheckEnabled(): boolean {
+    return this.cachedSettings.defaultLocationEnabled;
+  }
+
+  getDefaultLocationRadius(): number {
+    return this.cachedSettings.defaultLocationRadius;
+  }
+
+  getLocationTimeoutSeconds(): number {
+    return this.cachedSettings.locationTimeoutSeconds;
+  }
+
+  getLocationTimeoutMs(): number {
+    return this.cachedSettings.locationTimeoutSeconds * 1000;
+  }
+
   /**
    * 设置人脸匹配阈值
    */
@@ -158,6 +204,23 @@ export class SettingsService {
     const clamped = Math.max(1, Math.min(1440, Math.round(value)));
     this.cachedSettings.lateMinutes = clamped;
     await this.save(KEY_LATE_MINUTES, clamped);
+  }
+
+  async setDefaultLocationEnabled(value: boolean): Promise<void> {
+    this.cachedSettings.defaultLocationEnabled = value;
+    await this.save(KEY_DEFAULT_LOCATION_ENABLED, value);
+  }
+
+  async setDefaultLocationRadius(value: number): Promise<void> {
+    const clamped = Math.max(30, Math.min(500, Math.round(value)));
+    this.cachedSettings.defaultLocationRadius = clamped;
+    await this.save(KEY_DEFAULT_LOCATION_RADIUS, clamped);
+  }
+
+  async setLocationTimeoutSeconds(value: number): Promise<void> {
+    const clamped = Math.max(5, Math.min(30, Math.round(value)));
+    this.cachedSettings.locationTimeoutSeconds = clamped;
+    await this.save(KEY_LOCATION_TIMEOUT_SECONDS, clamped);
   }
 
   /**

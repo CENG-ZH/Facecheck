@@ -30,7 +30,13 @@ export class AttendanceDao {
       'compare_score': record.compareScore,
       'liveness_passed': record.livenessPassed ? 1 : 0,
       'status': record.status,
-      'captured_image_path': record.capturedImagePath
+      'captured_image_path': record.capturedImagePath,
+      'check_latitude': record.checkLatitude ?? 0,
+      'check_longitude': record.checkLongitude ?? 0,
+      'check_location_accuracy': record.checkLocationAccuracy ?? 0,
+      'distance_meters': record.distanceMeters ?? 0,
+      'location_passed': record.locationPassed === false ? 0 : 1,
+      'location_fail_reason': record.locationFailReason ?? ''
     };
 
     try {
@@ -224,7 +230,13 @@ export class AttendanceDao {
         compareScore: resultSet.getDouble(resultSet.getColumnIndex('compare_score')),
         livenessPassed: resultSet.getLong(resultSet.getColumnIndex('liveness_passed')) === 1,
         status: resultSet.getLong(resultSet.getColumnIndex('status')) as CheckInStatus,
-        capturedImagePath: resultSet.getString(resultSet.getColumnIndex('captured_image_path'))
+        capturedImagePath: resultSet.getString(resultSet.getColumnIndex('captured_image_path')),
+        checkLatitude: resultSet.getDouble(resultSet.getColumnIndex('check_latitude')),
+        checkLongitude: resultSet.getDouble(resultSet.getColumnIndex('check_longitude')),
+        checkLocationAccuracy: resultSet.getDouble(resultSet.getColumnIndex('check_location_accuracy')),
+        distanceMeters: resultSet.getDouble(resultSet.getColumnIndex('distance_meters')),
+        locationPassed: resultSet.getLong(resultSet.getColumnIndex('location_passed')) === 1,
+        locationFailReason: resultSet.getString(resultSet.getColumnIndex('location_fail_reason'))
       };
     } catch (error) {
       const caughtError = error as Error;

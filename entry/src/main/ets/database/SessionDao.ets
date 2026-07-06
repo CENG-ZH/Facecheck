@@ -1,6 +1,7 @@
 import { relationalStore } from '@kit.ArkData';
 import { DatabaseManager } from './DatabaseManager';
 import { AttendanceSession, SessionStatus } from '../models/AttendanceModel';
+import { GeoFenceConfig } from '../models/LocationModel';
 import { Logger } from '../utils/Logger';
 
 const TABLE_NAME: string = 'attendance_sessions';
@@ -15,8 +16,10 @@ export class SessionDao {
     courseId: number,
     startTime: number,
     lateTime: number,
-    endTime: number
+    endTime: number,
+    geoFenceConfig?: GeoFenceConfig
   ): Promise<number> {
+    const locationEnabled = geoFenceConfig?.enableLocationCheck === true;
     try {
       return await this.getStore().insert(TABLE_NAME, {
         'title': title,
@@ -24,7 +27,13 @@ export class SessionDao {
         'start_time': startTime,
         'late_time': lateTime,
         'end_time': endTime,
-        'status': SessionStatus.IN_PROGRESS
+        'status': SessionStatus.IN_PROGRESS,
+        'enable_location_check': locationEnabled ? 1 : 0,
+        'location_name': geoFenceConfig?.locationName ?? '',
+        'latitude': geoFenceConfig?.latitude ?? 0,
+        'longitude': geoFenceConfig?.longitude ?? 0,
+        'radius_meters': geoFenceConfig?.radiusMeters ?? 100,
+        'location_accuracy': geoFenceConfig?.locationAccuracy ?? 0
       });
     } catch (error) {
       Logger.error('创建签到场次失败: %{public}s', JSON.stringify(error));
@@ -94,7 +103,13 @@ export class SessionDao {
             startTime: resultSet.getLong(resultSet.getColumnIndex('start_time')),
             lateTime: resultSet.getLong(resultSet.getColumnIndex('late_time')),
             endTime: resultSet.getLong(resultSet.getColumnIndex('end_time')),
-            status: resultSet.getLong(resultSet.getColumnIndex('status')) as SessionStatus
+            status: resultSet.getLong(resultSet.getColumnIndex('status')) as SessionStatus,
+            enableLocationCheck: resultSet.getLong(resultSet.getColumnIndex('enable_location_check')) === 1,
+            locationName: resultSet.getString(resultSet.getColumnIndex('location_name')),
+            latitude: resultSet.getDouble(resultSet.getColumnIndex('latitude')),
+            longitude: resultSet.getDouble(resultSet.getColumnIndex('longitude')),
+            radiusMeters: resultSet.getLong(resultSet.getColumnIndex('radius_meters')),
+            locationAccuracy: resultSet.getDouble(resultSet.getColumnIndex('location_accuracy'))
           });
         }
       } finally {

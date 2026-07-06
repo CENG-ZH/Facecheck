@@ -8,9 +8,21 @@
 <p align="center">
   <img src="https://img.shields.io/badge/HarmonyOS-6.1-1677FF?style=flat-square">
   <img src="https://img.shields.io/badge/API-23-1677FF?style=flat-square">
-  <img src="https://img.shields.io/badge/Version-1.3-success?style=flat-square">
+  <img src="https://img.shields.io/badge/Version-2.0--dev-success?style=flat-square">
   <img src="https://img.shields.io/badge/UI-PlanUI_100%25-brightgreen?style=flat-square">
 </p>
+
+---
+
+## ✅ v2.0-dev 新增能力
+
+- **地理围栏签到**：老师发起签到时记录当前 Pad 位置，每次刷脸前再次校验 Pad 是否仍在签到地点半径内。
+- **位置策略设置**：设置页支持配置新建场次默认位置校验、默认围栏半径和定位超时。
+- **失败尝试日志**：位置失败、活体失败、人脸失败等不会污染正式出勤率，但可在记录页和 CSV 中追溯。
+- **演示数据**：设置页可一键生成带 DEMO 标识的班级、课程和学生，用于快速测试。
+- **系统诊断**：可导出不含姓名、学号、人脸照片和签到明细的诊断摘要，方便真机排查。
+
+> 2.0 当前仍保持教师 Pad 设备模式：位置校验验证的是签到设备是否仍在课堂范围内，不是每个学生自带设备的定位。
 
 ---
 
@@ -104,6 +116,7 @@ entry/src/main/ets/
 | DevEco Studio + HarmonyOS SDK 6.x | 开发工具链 |
 | Core Vision Kit | 人脸检测 / 人脸比对 |
 | Vision Kit | 交互式活体检测 |
+| Location Kit | 前台即时定位与地理围栏校验 |
 | ArkData RelationalStore | 关系型数据库 |
 | ArkData Preferences | 轻量配置存储 |
 | Camera Kit / Image Kit | 相机拍照与图像处理 |
